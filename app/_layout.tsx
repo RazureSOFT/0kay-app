@@ -93,6 +93,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" options={{ animation: 'fade' }} />
         <Stack.Screen name="pairing" />
+        <Stack.Screen name="scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="session/[id]" />
         <Stack.Screen name="settings/index" />
         <Stack.Screen name="settings/[id]" />

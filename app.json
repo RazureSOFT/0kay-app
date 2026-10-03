@@ -20,6 +20,12 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "允许 0KAY 使用相机扫描连接二维码。"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "允许 0KAY 读取相册以发送图片。",

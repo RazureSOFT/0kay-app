@@ -54,6 +54,14 @@ export default function Login() {
             <Text style={styles.sub}>连接你自托管的 AI 伙伴</Text>
           </View>
 
+          <Button
+            title="扫描二维码连接"
+            icon="qr-code-outline"
+            variant="subtle"
+            onPress={() => router.push('/scan')}
+            style={{ marginBottom: 14 }}
+          />
+
           <Card>
             <Input
               label="服务器地址"

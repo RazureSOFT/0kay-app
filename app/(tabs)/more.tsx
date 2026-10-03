@@ -7,6 +7,7 @@ import { useServer } from '../../src/store/server';
 import { theme } from '../../src/theme';
 
 const ITEMS: { label: string; icon: keyof typeof Ionicons.glyphMap; route: string }[] = [
+  { label: '扫码连接', icon: 'qr-code-outline', route: '/scan' },
   { label: '设置', icon: 'settings-outline', route: '/settings' },
   { label: '模型供应商', icon: 'cloud-outline', route: '/providers' },
   { label: '插件', icon: 'extension-puzzle-outline', route: '/plugins' },
