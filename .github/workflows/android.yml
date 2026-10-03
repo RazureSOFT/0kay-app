@@ -60,30 +60,13 @@ jobs:
         run: npx expo prebuild --platform android --no-install
 
       - name: Configure Gradle memory
-        run: echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
-
-      - name: Debug inline module mirror
-        run: |
-          set -x
-          node --no-warnings --eval "require('expo/bin/autolinking')" expo-modules-autolinking \
-            mirror-kotlin-inline-modules \
-            --kotlin-files-mirror-directory "$PWD/node_modules/expo/android/src/main/java/inline/modules" \
-            --inline-modules-list-directory "$PWD/node_modules/expo/android/build/inline/modules" \
-            --watched-directories-serialized "[]"
-          echo "mirror exit=$?"
+        run: printf '\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\n' >> android/gradle.properties
 
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace --info > /tmp/gradle.log 2>&1 || {
-            echo "=== GRADLE FAILED; relevant lines ==="
-            grep -n -iE "mirror-kotlin|Generation path|expo-modules-autolinking failed|node:|ERR_|Cannot find|What went wrong|error:" /tmp/gradle.log | tail -n 100
-            echo "=== last 120 lines ==="
-            tail -n 120 /tmp/gradle.log
-            exit 1
-          }
-          tail -n 40 /tmp/gradle.log
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Rename artifact
         run: |
