@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "0KAY",
+    "slug": "0kay-app",
+    "version": "0.1.0",
+    "scheme": "0kay",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.razuresoft.okayapp",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1020"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许 0KAY 读取相册以发送图片。",
+          "cameraPermission": "允许 0KAY 使用相机拍照。"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
