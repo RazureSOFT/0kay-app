@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
@@ -80,3 +80,19 @@ jobs:
           path: out/0kay-app.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: 0KAY App v0.1.0
+          body: |
+            Android APK for the 0KAY companion (React Native + Expo).
+
+            - 连接自托管 0KAY Core（HTTP + Token / PIN / 设备配对）
+            - 聊天（SSE 流式）、状态、任务与会话、审批与提问
+            - 供应商/模型、设置、插件、记忆、技能、通知、用量
+
+            APK 使用调试签名，可直接侧载安装。
+          files: out/0kay-app.apk
+          fail_on_unmatched_files: true
