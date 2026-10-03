@@ -28,9 +28,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -42,12 +39,22 @@ jobs:
       - name: Align Expo package versions
         run: npx expo install --fix
 
+      - name: Locate Android SDK
+        id: sdk
+        run: |
+          SDKM="$(command -v sdkmanager || true)"
+          if [ -z "$SDKM" ]; then
+            SDKM="$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -n1 || true)"
+          fi
+          echo "Using sdkmanager: $SDKM"
+          echo "sdkmanager=$SDKM" >> "$GITHUB_OUTPUT"
+
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses >/dev/null 2>&1 || true
+        run: yes | "${{ steps.sdk.outputs.sdkmanager }}" --licenses >/dev/null 2>&1 || true
 
       - name: Ensure SDK components
         run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null 2>&1 || true
+          "${{ steps.sdk.outputs.sdkmanager }}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null 2>&1 || true
 
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --no-install
