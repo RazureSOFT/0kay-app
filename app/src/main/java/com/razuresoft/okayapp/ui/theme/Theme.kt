@@ -33,9 +33,21 @@ private val okayColors = darkColorScheme(
     error = Danger,
     onError = Color.White,
     secondary = Accent,
+    primaryContainer = Color(0xFF24406F),
+    onPrimaryContainer = TextMain,
+    secondaryContainer = Color(0xFF2A2450),
+    onSecondaryContainer = TextMain,
+    errorContainer = Color(0xFF4A1F1F),
+    onErrorContainer = Color(0xFFFFD9D9),
+    inverseSurface = CardAlt,
 )
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OkayTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = okayColors, content = content)
+    MaterialExpressiveTheme(
+        colorScheme = okayColors,
+        motionScheme = androidx.compose.material3.MotionScheme.expressive(),
+        content = content,
+    )
 }

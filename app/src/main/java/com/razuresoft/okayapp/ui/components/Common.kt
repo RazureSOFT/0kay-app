@@ -98,9 +98,9 @@ fun CardBox(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(CardC)
-            .border(1.dp, BorderC, RoundedCornerShape(12.dp))
+            .border(1.dp, BorderC, RoundedCornerShape(20.dp))
             .padding(14.dp),
         content = content,
     )
@@ -129,7 +129,7 @@ fun PrimaryButton(
         onClick = onClick,
         enabled = enabled && !loading,
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
     ) {
         if (loading) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
@@ -141,7 +141,7 @@ fun PrimaryButton(
 
 @Composable
 fun TonalButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    androidx.compose.material3.FilledTonalButton(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(12.dp)) {
+    androidx.compose.material3.FilledTonalButton(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(20.dp)) {
         Text(text)
     }
 }
@@ -169,7 +169,7 @@ fun AppTextField(
         placeholder = placeholder?.let { { Text(it, color = TextFaint) } },
         modifier = modifier.fillMaxWidth(),
         singleLine = singleLine,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
             keyboardType = when {
@@ -245,9 +245,9 @@ fun ErrorBox(message: String?, onRetry: (() -> Unit)? = null) {
         Modifier
             .fillMaxWidth()
             .padding(14.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(Danger.copy(alpha = 0.15f))
-            .border(1.dp, Danger, RoundedCornerShape(12.dp))
+            .border(1.dp, Danger, RoundedCornerShape(20.dp))
             .padding(12.dp),
     ) {
         Text(message, color = TextMain)
