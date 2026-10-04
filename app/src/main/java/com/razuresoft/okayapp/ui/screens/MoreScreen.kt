@@ -92,5 +92,6 @@ fun MoreScreen(nav: NavHostController) {
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(18.dp),
         )
+        Spacer(Modifier.height(96.dp))
     }
 }
