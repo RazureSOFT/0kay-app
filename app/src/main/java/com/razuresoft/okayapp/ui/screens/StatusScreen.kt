@@ -120,14 +120,8 @@ fun StatusScreen(nav: NavHostController) {
                 StatCell("插件", s.int("pluginCount").toString())
                 StatCell("健康插件", s.int("healthyPlugins").toString())
             }
-            val tasks = s.arr("activeTasks")
-            if (tasks.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text("进行中任务 ${tasks.size}", color = TextMain, fontWeight = FontWeight.SemiBold)
-                tasks.forEach { Text("• ${it.asObject().str("prompt").ifEmpty { it.toString().take(60) }}", color = TextDim, style = MaterialTheme.typography.bodySmall) }
-            }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(96.dp))
     }
 }
 

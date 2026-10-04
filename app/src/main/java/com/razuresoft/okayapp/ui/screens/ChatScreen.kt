@@ -202,7 +202,7 @@ fun ChatScreen(nav: NavHostController) {
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            Column(Modifier.fillMaxSize().imePadding()) {
+            Column(Modifier.fillMaxSize().imePadding().padding(bottom = 84.dp)) {
                 if (showStage) {
                     Box(Modifier.fillMaxWidth().height(230.dp)) {
                         Live2DStage(repo, Modifier.fillMaxSize())

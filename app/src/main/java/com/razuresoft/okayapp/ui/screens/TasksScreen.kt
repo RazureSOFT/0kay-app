@@ -44,20 +44,15 @@ import com.razuresoft.okayapp.data.jsonOf
 import com.razuresoft.okayapp.data.obj
 import com.razuresoft.okayapp.data.str
 
-/** 任务与 Agent 收件箱：审批请求、提问、进行中任务。 */
+/** 任务与 Agent 收件箱：审批请求与提问。 */
 @Composable
 fun TasksScreen(nav: NavHostController) {
     val repo = LocalRepo.current
     val scope = rememberCoroutineScope()
     var inbox by remember { mutableStateOf<JsonObject>(JsonObject(emptyMap())) }
-    var tasks by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
 
     suspend fun refresh() {
         runCatching { inbox = repo.api.get("/api/agent/inbox").asObject() }
-        runCatching {
-            tasks = repo.api.get("/api/tasks").asObject().arr("tasks").map { it.asObject() }
-                .filter { it.str("state") == "running" || it.str("state").isEmpty() }
-        }
     }
 
     LaunchedEffect(Unit) {
@@ -126,23 +121,7 @@ fun TasksScreen(nav: NavHostController) {
             }
         }
 
-        SectionTitle("进行中任务 (${tasks.size})")
-        if (tasks.isEmpty()) Text("暂无进行中任务", color = TextDim, modifier = Modifier.padding(horizontal = 18.dp))
-        tasks.forEach { t ->
-            CardBox {
-                Text(t.str("prompt").ifEmpty { t.str("task_id") }, color = TextMain, style = MaterialTheme.typography.bodyMedium)
-                Text("状态: ${t.str("state")} · ${t.str("task_id").take(18)}", color = TextDim, style = MaterialTheme.typography.labelSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TonalButton("取消", {
-                        scope.launch {
-                            runCatching { repo.api.post("/api/tasks/cancel", jsonOf("task_id" to jsStr(t.str("task_id")))) }
-                            refresh()
-                        }
-                    })
-                }
-            }
-        }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(96.dp))
     }
 }
 

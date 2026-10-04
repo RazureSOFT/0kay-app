@@ -38,9 +38,9 @@
   window.onerror = function (m) { var d = document.getElementById('mood'); d.style.display = 'block'; d.textContent = 'Live2D error: ' + m; };
 
   Promise.all([
-    load(base + '/vendor/pixi.min.js'),
+    load('pixi.min.js'),
     load('live2d.core.js'),
-    load(base + '/vendor/live2dcubismcore.min.js'),
+    load('live2dcubismcore.min.js'),
     load('cubism2.min.js'),
     load('pixi-live2d-display.min.js'),
   ]).then(function () {

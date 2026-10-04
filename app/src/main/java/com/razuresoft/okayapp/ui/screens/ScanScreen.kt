@@ -103,10 +103,11 @@ fun ScanScreen(nav: NavHostController) {
         if (cameraGranted && openScanner) {
             launcher.launch(
                 ScanOptions().apply {
+                    setCaptureActivity(com.razuresoft.okayapp.PortraitCaptureActivity::class.java)
                     setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                     setPrompt("扫描 0KAY 连接二维码")
                     setBeepEnabled(false)
-                    setOrientationLocked(false)
+                    setOrientationLocked(true)
                     setBarcodeImageEnabled(false)
                 },
             )
