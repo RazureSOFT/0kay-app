@@ -18,13 +18,13 @@ val BorderC = Color(0xFF243056)
 val TextMain = Color(0xFFE8ECFF)
 val TextDim = Color(0xFF9AA4C7)
 val TextFaint = Color(0xFF6B76A0)
-val Primary = Color(0xFF5B8CFF)
-val PrimaryContainer = Color(0xFF24406F)
-val Success = Color(0xFF3DDC84)
+val Primary = Color(0xFFC7BFFF)
+val PrimaryContainer = Color(0xFF4A3AA8)
+val Success = Color(0xFF7FD9A8)
 val Warn = Color(0xFFFFB454)
 val Danger = Color(0xFFFF5C5C)
 val UserBubble = Color(0xFF24406F)
-val Accent = Color(0xFFA78BFA)
+val Accent = Color(0xFFFFB0C8)
 
 /** M3 Expressive 的形状体系：整体比默认 Material 圆润一到两档。 */
 private val expressiveShapes = Shapes(
@@ -37,11 +37,17 @@ private val expressiveShapes = Shapes(
 
 private val okayColors = darkColorScheme(
     primary = Primary,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF241B55),
     primaryContainer = PrimaryContainer,
-    onPrimaryContainer = TextMain,
-    secondaryContainer = Color(0xFF2A2450),
-    onSecondaryContainer = TextMain,
+    onPrimaryContainer = Color(0xFFE5DEFF),
+    secondary = Accent,
+    onSecondary = Color(0xFF5C1033),
+    secondaryContainer = Color(0xFF7B2B57),
+    onSecondaryContainer = Color(0xFFFFD9E6),
+    tertiary = Color(0xFF8AD9C0),
+    onTertiary = Color(0xFF00382C),
+    tertiaryContainer = Color(0xFF1F5B4B),
+    onTertiaryContainer = Color(0xFFA8F5DE),
     background = Bg,
     onBackground = TextMain,
     surface = CardC,
@@ -59,7 +65,6 @@ private val okayColors = darkColorScheme(
     onError = Color.White,
     errorContainer = Color(0xFF4A1F1F),
     onErrorContainer = Color(0xFFFFD9D9),
-    secondary = Accent,
     inverseSurface = CardAlt,
 )
 

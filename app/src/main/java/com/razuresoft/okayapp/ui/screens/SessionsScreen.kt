@@ -13,23 +13,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavHostController
 import com.razuresoft.okayapp.data.arr
 import com.razuresoft.okayapp.data.asObject
-import com.razuresoft.okayapp.data.int
 import com.razuresoft.okayapp.data.str
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.Routes
 import com.razuresoft.okayapp.ui.components.EmptyBox
 import com.razuresoft.okayapp.ui.components.ErrorBox
+import com.razuresoft.okayapp.ui.components.Loading
 import com.razuresoft.okayapp.ui.components.RowItem
 import com.razuresoft.okayapp.ui.components.ScreenScaffold
-import com.razuresoft.okayapp.ui.theme.TextFaint
-import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.JsonObject
 
-/** Agent 会话列表（/api/agent/sessions）。 */
+/**
+ * Agent 会话列表。会话是 /api/tasks 快照里 kind == "agent_session" 的行，
+ * 标题取 prompt，轮次经 /api/agent/sessions/{id}/turns 分页拉取。
+ */
 @Composable
 fun SessionsScreen(nav: NavHostController) {
     val repo = LocalRepo.current
@@ -39,29 +39,32 @@ fun SessionsScreen(nav: NavHostController) {
 
     LaunchedEffect(Unit) {
         runCatching {
-            val resp = repo.api.get("/api/agent/sessions")
-            sessions = (resp as? kotlinx.serialization.json.JsonArray)?.map { it.asObject() }
-                ?: resp.asObject().arr("sessions").map { it.asObject() }
+            val resp = repo.api.get("/api/tasks")
+            val rows = (resp as? kotlinx.serialization.json.JsonArray)?.map { it.asObject() }
+                ?: resp.asObject().arr("tasks").map { it.asObject() }
+            sessions = rows.filter { it.str("kind") == "agent_session" }
+                .sortedByDescending { it.str("started_at") }
         }.onFailure { error = it.message }
         loaded = true
     }
 
     ScreenScaffold(title = "Agent 会话", onBack = { nav.popBackStack() }) { padding ->
+        ErrorBox(error)
+        if (!loaded && error == null) {
+            Loading()
+            return@ScreenScaffold
+        }
         if (loaded && sessions.isEmpty() && error == null) {
             EmptyBox("暂无会话")
         }
-        ErrorBox(error)
         LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-            items(sessions, key = { it.str("id").ifEmpty { it.hashCode().toString() } }) { s ->
+            items(sessions, key = { it.str("task_id").ifEmpty { it.hashCode().toString() } }) { s ->
                 RowItem(
-                    title = s.str("title").ifEmpty { s.str("summary").ifEmpty { s.str("id").take(18) } },
-                    subtitle = "消息 ${s.int("message_count")}${s.str("updated_at").let { if (it.isNotEmpty()) " · $it" else "" }}",
-                    onClick = { nav.navigate("${Routes.Session}/${s.str("id")}") },
+                    title = s.str("prompt").ifEmpty { s.str("task_id").take(18) },
+                    subtitle = s.str("started_at"),
+                    onClick = { nav.navigate("${Routes.Session}/${s.str("task_id")}") },
                 )
             }
-        }
-        if (sessions.isEmpty() && error != null) {
-            Text("无法加载会话列表", color = TextFaint, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(18.dp))
         }
     }
 }

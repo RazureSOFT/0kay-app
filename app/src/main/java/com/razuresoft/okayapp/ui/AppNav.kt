@@ -100,10 +100,19 @@ fun AppRoot() {
         containerColor = Bg,
         bottomBar = {
             if (showBottom) {
-                NavigationBar(containerColor = Bg) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
                     tabs.forEach { tab ->
                         NavigationBarItem(
                             selected = route == tab.route,
+                            colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unselectedIconColor = TextDim,
+                                unselectedTextColor = TextDim,
+                            ),
                             onClick = {
                                 nav.navigate(tab.route) {
                                     popUpTo(Routes.Chat) { saveState = true }

@@ -7612,20 +7612,18 @@ r.setup = function() {
 Q.init();
 var j = false;
 
-export{
-  P as UtSystem,
-  q as UtDebug,
-  am as LDTransform,
-  au as LDGL,
-  Q as Live2D,
-  l as Live2DModelWebGL,
-  v as Live2DModelJS,
-  ao as Live2DMotion,
-  V as MotionQueueManager,
-  u as PhysicsHair,
-  ah as AMotion,
-  i as PartsDataID,
-  Z as DrawDataID,
-  n as BaseDataID,
-  z as ParamID,
-}
+window.UtSystem=P;
+window.UtDebug=q;
+window.LDTransform=am;
+window.LDGL=au;
+window.Live2D=Q;
+window.Live2DModelWebGL=l;
+window.Live2DModelJS=v;
+window.Live2DMotion=ao;
+window.MotionQueueManager=V;
+window.PhysicsHair=u;
+window.AMotion=ah;
+window.PartsDataID=i;
+window.DrawDataID=Z;
+window.BaseDataID=n;
+window.ParamID=z;
