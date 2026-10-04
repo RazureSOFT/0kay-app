@@ -197,6 +197,7 @@ fun AppRoot() {
 private fun FloatingNavBar(nav: NavHostController, route: String?, hazeState: HazeState) {
     val selectedIndex = tabs.indexOfFirst { it.route == route }.coerceAtLeast(0)
 
+    val barColor = MaterialTheme.colorScheme.surfaceContainer
     Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding().padding(bottom = 10.dp)) {
         Surface(
             shape = RoundedCornerShape(50),
@@ -206,8 +207,8 @@ private fun FloatingNavBar(nav: NavHostController, route: String?, hazeState: Ha
                 .fillMaxWidth()
                 .hazeEffect(hazeState) {
                     style = HazeStyle(
-                        backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
-                        tints = listOf(HazeTint(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f))),
+                        backgroundColor = barColor,
+                        tints = listOf(HazeTint(barColor.copy(alpha = 0.72f))),
                         blurRadius = 24.dp,
                         noiseFactor = 0f,
                     )
