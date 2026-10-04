@@ -70,5 +70,5 @@ jobs:
             - 供应商/模型、动态设置分区、插件、记忆、技能、通知、用量
 
             APK 使用调试签名，可直接侧载安装。
-          files: app/out/0kay-app.apk
+          files: out/0kay-app.apk
           fail_on_unmatched_files: true
