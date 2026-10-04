@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -88,7 +90,7 @@ fun ScreenScaffold(
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
                             Icon(
-                                androidx.compose.material.icons.Icons.AutoMirrored.Outlined.ArrowBack,
+                                Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = "返回",
                                 tint = TextMain,
                             )
