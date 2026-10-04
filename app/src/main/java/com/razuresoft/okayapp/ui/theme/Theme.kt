@@ -45,7 +45,7 @@ private val okayColors = darkColorScheme(
 @OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OkayTheme(content: @Composable () -> Unit) {
-    MaterialExpressiveTheme(
+    androidx.compose.material3.MaterialExpressiveTheme(
         colorScheme = okayColors,
         motionScheme = androidx.compose.material3.MotionScheme.expressive(),
         content = content,
