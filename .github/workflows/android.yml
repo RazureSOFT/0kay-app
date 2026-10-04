@@ -1,8 +1,9 @@
-name: Build Android APK
+name: Build Android APK (native Compose)
 
 on:
   push:
     branches: [main]
+    paths: ['app/**', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:
@@ -12,15 +13,10 @@ jobs:
   apk:
     name: Build release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -31,47 +27,25 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
+          gradle-version: '8.10.2'
           cache-read-only: false
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Align Expo package versions
-        run: npx expo install --fix
-
-      - name: Locate Android SDK
-        id: sdk
-        run: |
-          SDKM="$(command -v sdkmanager || true)"
-          if [ -z "$SDKM" ]; then
-            SDKM="$(ls -d "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -n1 || true)"
-          fi
-          echo "Using sdkmanager: $SDKM"
-          echo "sdkmanager=$SDKM" >> "$GITHUB_OUTPUT"
-
-      - name: Accept Android SDK licenses
-        run: yes | "${{ steps.sdk.outputs.sdkmanager }}" --licenses >/dev/null 2>&1 || true
-
-      - name: Ensure SDK components
-        run: |
-          "${{ steps.sdk.outputs.sdkmanager }}" "platform-tools" "platforms;android-36" "build-tools;36.0.0" >/dev/null 2>&1 || true
-
-      - name: Prebuild Android project
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Configure Gradle memory
-        run: printf '\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\n' >> android/gradle.properties
-
       - name: Build APK
-        working-directory: android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Surface compile errors
+        if: failure()
+        run: |
+          grep -E "^e: |error:|FAILURE: Build" build.log | head -12 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
 
       - name: Rename artifact
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/release/app-release.apk out/0kay-app.apk
+          cp app/build/outputs/apk/release/app-release.apk out/0kay-app.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -84,15 +58,17 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.0
-          name: 0KAY App v0.1.0
+          tag_name: v0.2.0
+          name: 0KAY App v0.2.0 (native Compose)
           body: |
-            Android APK for the 0KAY companion (React Native + Expo).
+            Android APK for the 0KAY companion — rewritten in native Jetpack Compose.
 
-            - 连接自托管 0KAY Core（HTTP + Token / PIN / 设备配对）
-            - 聊天（SSE 流式）、状态、任务与会话、审批与提问
-            - 供应商/模型、设置、插件、记忆、技能、通知、用量
+            - 连接自托管 0KAY Core（Token / PIN / 扫码配对）
+            - 聊天（SSE 流式、图片/附件、思考摘要、情绪徽章、TTS 口型）
+            - Live2D 形象（Pixi + Cubism 2/4，动作与表情驱动）
+            - 状态、任务与 Agent 审批/提问收件箱
+            - 供应商/模型、动态设置分区、插件、记忆、技能、通知、用量
 
             APK 使用调试签名，可直接侧载安装。
-          files: out/0kay-app.apk
+          files: app/out/0kay-app.apk
           fail_on_unmatched_files: true
