@@ -61,6 +61,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    testImplementation("junit:junit:4.13.2")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("dev.chrisbanes.haze:haze:1.6.10")

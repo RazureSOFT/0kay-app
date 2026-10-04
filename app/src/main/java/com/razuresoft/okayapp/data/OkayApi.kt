@@ -47,6 +47,13 @@ class OkayApi {
 
     private fun Request.Builder.auth(): Request.Builder {
         if (config.token.isNotEmpty()) header("Authorization", "Bearer ${config.token}")
+        return this
+    }
+
+    // PIN is a second-confirmation credential for sensitive operations, not a
+    // standing request header: it is only attached when the server challenges
+    // with 403 pin_required, and each such response is retried exactly once.
+    private fun Request.Builder.pin(): Request.Builder {
         if (config.pin.isNotEmpty()) header("X-0kay-Pin", config.pin)
         return this
     }
@@ -57,10 +64,27 @@ class OkayApi {
         params: List<Pair<String, Any?>>,
         body: JsonElement?,
     ): JsonElement = withContext(Dispatchers.IO) {
-        val rb = Request.Builder().url(buildUrl(path, params)).auth()
+        try {
+            doExecute(method, path, params, body, false)
+        } catch (e: ApiException) {
+            if (e.status == 403 && e.apiCode == "pin_required" && config.pin.isNotEmpty()) {
+                doExecute(method, path, params, body, true)
+            } else throw e
+        }
+    }
+
+    private fun doExecute(
+        method: String,
+        path: String,
+        params: List<Pair<String, Any?>>,
+        body: JsonElement?,
+        withPin: Boolean,
+    ): JsonElement {
+        var rb = Request.Builder().url(buildUrl(path, params)).auth()
+        if (withPin) rb = rb.pin()
         val reqBody = body?.let { okayJson.encodeToString(JsonElement.serializer(), it).toRequestBody(JSON) }
         rb.method(method, reqBody)
-        client.newCall(rb.build()).execute().use { parse(it) }
+        return client.newCall(rb.build()).execute().use { parse(it) }
     }
 
     private fun parse(resp: Response): JsonElement {
@@ -86,13 +110,25 @@ class OkayApi {
         withContext(Dispatchers.IO) {
             val part = bytes.toRequestBody((mime.ifEmpty { "application/octet-stream" }).toMediaType())
             val form = MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart(field, name, part).build()
-            val rb = Request.Builder().url(buildUrl(path)).auth().post(form)
-            client.newCall(rb.build()).execute().use { parse(it) }
+            try {
+                client.newCall(Request.Builder().url(buildUrl(path)).auth().post(form).build()).execute().use { parse(it) }
+            } catch (e: ApiException) {
+                if (e.status == 403 && e.apiCode == "pin_required" && config.pin.isNotEmpty()) {
+                    client.newCall(Request.Builder().url(buildUrl(path)).auth().pin().post(form).build()).execute().use { parse(it) }
+                } else throw e
+            }
         }
 
     suspend fun getBytes(urlOrPath: String): ByteArray = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(absoluteUrl(urlOrPath)).auth().build()
-        client.newCall(req).execute().use { resp ->
+        try { rawGetBytes(urlOrPath, false) } catch (e: ApiException) {
+            if (e.status == 403 && config.pin.isNotEmpty()) rawGetBytes(urlOrPath, true) else throw e
+        }
+    }
+
+    private fun rawGetBytes(urlOrPath: String, withPin: Boolean): ByteArray {
+        var rb = Request.Builder().url(absoluteUrl(urlOrPath)).auth()
+        if (withPin) rb = rb.pin()
+        return client.newCall(rb.build()).execute().use { resp ->
             if (!resp.isSuccessful) throw ApiException(resp.code, null, "HTTP ${resp.code}")
             resp.body?.bytes() ?: ByteArray(0)
         }
@@ -100,9 +136,16 @@ class OkayApi {
 
     /** Raw POST returning bytes (TTS audio, converted files). */
     suspend fun rawPost(path: String, body: JsonElement = JsonPrimitive("")): ByteArray = withContext(Dispatchers.IO) {
+        try { rawPostBytes(path, body, false) } catch (e: ApiException) {
+            if (e.status == 403 && config.pin.isNotEmpty()) rawPostBytes(path, body, true) else throw e
+        }
+    }
+
+    private fun rawPostBytes(path: String, body: JsonElement, withPin: Boolean): ByteArray {
         val reqBody = okayJson.encodeToString(JsonElement.serializer(), body).toRequestBody(JSON)
-        val rb = Request.Builder().url(buildUrl(path)).auth().post(reqBody)
-        client.newCall(rb.build()).execute().use { resp ->
+        var rb = Request.Builder().url(buildUrl(path)).auth()
+        if (withPin) rb = rb.pin()
+        return client.newCall(rb.post(reqBody).build()).execute().use { resp ->
             if (!resp.isSuccessful) throw ApiException(resp.code, null, "HTTP ${resp.code}")
             resp.body?.bytes() ?: ByteArray(0)
         }
@@ -110,13 +153,20 @@ class OkayApi {
 
     fun sse(path: String, body: JsonElement, listener: EventSourceListener): EventSource {
         val reqBody = okayJson.encodeToString(JsonElement.serializer(), body).toRequestBody(JSON)
-        val rb = Request.Builder().url(buildUrl(path)).auth().header("Accept", "text/event-stream").post(reqBody)
-        return sseFactory.newEventSource(rb.build(), listener)
+        var rb = Request.Builder().url(buildUrl(path)).auth().header("Accept", "text/event-stream")
+        // SSE responses are long-lived; the PIN challenge can only be surfaced by
+        // EventSource callers, so attach it up front when one is configured.
+        if (config.pin.isNotEmpty()) rb = rb.pin()
+        return sseFactory.newEventSource(rb.post(reqBody).build(), listener)
     }
 
     /** Send a pre-built request (multipart Live2D upload) and parse the JSON reply. */
     suspend fun rawRequest(rb: Request.Builder): JsonElement = withContext(Dispatchers.IO) {
-        client.newCall(rb.auth().build()).execute().use { parse(it) }
+        try { client.newCall(rb.auth().build()).execute().use { parse(it) } } catch (e: ApiException) {
+            if (e.status == 403 && e.apiCode == "pin_required" && config.pin.isNotEmpty()) {
+                client.newCall(rb.auth().pin().build()).execute().use { parse(it) }
+            } else throw e
+        }
     }
 
     companion object {

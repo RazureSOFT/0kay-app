@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -81,10 +82,12 @@ class AppRepo(context: Context) {
     val store = ServerStore(context)
     val api = OkayApi()
     val chat = ChatStore(context, api)
+    val inbox = InboxStore(api)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     init {
         scope.launch { store.flow.collect { api.config = it } }
+        inbox.start()
     }
 
     /** 主线程协程里执行一段异步工作（UI 层的一次性调用用这个，别自建 scope）。 */
@@ -113,3 +116,52 @@ fun jsonOf(vararg pairs: Pair<String, JsonElement?>): JsonObject =
 fun jsStr(value: String?): JsonElement = if (value == null) JsonNull else JsonPrimitive(value)
 fun jsNum(value: Number): JsonElement = JsonPrimitive(value)
 fun jsBool(value: Boolean): JsonElement = JsonPrimitive(value)
+
+/**
+ * Agent question options arrive either as ["label", ...] strings or as
+ * [{"label": "..."}, ...] objects depending on the executor version.
+ * Every consumer must parse them through this one function.
+ */
+fun JsonElement.agentOptionLabel(): String = when (this) {
+    is JsonPrimitive -> contentOrNull.orEmpty()
+    is JsonObject -> (this["label"] as? JsonPrimitive)?.contentOrNull
+        ?: (this["text"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+    else -> toString()
+}
+
+/** True when a proactive notification belongs to this App session. */
+fun JsonObject.notificationBelongsTo(sessionId: String): Boolean {
+    val sid = str("session_id")
+    return sid.isEmpty() || sid == sessionId
+}
+
+/**
+ * Single polling owner for the agent inbox. The global overlay and the Tasks
+ * screen both observe these lists; answering/denying an item refreshes here,
+ * so the two views can never disagree or double-submit.
+ */
+class InboxStore(private val api: OkayApi) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    @Volatile private var started = false
+    val approvals = kotlinx.coroutines.flow.MutableStateFlow(emptyList<JsonObject>())
+    val questions = kotlinx.coroutines.flow.MutableStateFlow(emptyList<JsonObject>())
+
+    fun start() {
+        if (started) return
+        started = true
+        scope.launch {
+            while (true) {
+                refresh()
+                kotlinx.coroutines.delay(2_500)
+            }
+        }
+    }
+
+    suspend fun refresh() {
+        runCatching {
+            val inbox = api.get("/api/agent/inbox").asObject()
+            approvals.value = inbox.arr("approvals").map { it.asObject() }
+            questions.value = inbox.arr("questions").map { it.asObject() }
+        }
+    }
+}

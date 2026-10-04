@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import com.razuresoft.okayapp.data.arr
 import com.razuresoft.okayapp.data.asObject
+import com.razuresoft.okayapp.data.agentOptionLabel
 import com.razuresoft.okayapp.data.jsBool
 import com.razuresoft.okayapp.data.jsStr
 import com.razuresoft.okayapp.data.jsonOf
@@ -49,18 +51,8 @@ import com.razuresoft.okayapp.data.str
 fun TasksScreen(nav: NavHostController) {
     val repo = LocalRepo.current
     val scope = rememberCoroutineScope()
-    var inbox by remember { mutableStateOf<JsonObject>(JsonObject(emptyMap())) }
-
-    suspend fun refresh() {
-        runCatching { inbox = repo.api.get("/api/agent/inbox").asObject() }
-    }
-
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            refresh()
-            delay(3000)
-        }
-    }
+    val approvals by repo.inbox.approvals.collectAsState()
+    val questions by repo.inbox.questions.collectAsState()
 
     fun resolveInbox(kind: String, item: JsonObject, payload: JsonObject) {
         scope.launch {
@@ -73,18 +65,14 @@ fun TasksScreen(nav: NavHostController) {
                     ) + payload,
                 )
             }
-            refresh()
+            repo.inbox.refresh()
         }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        val approvals = inbox.arr("approvals")
-        val questions = inbox.arr("questions")
-
         SectionTitle("待审批 (${approvals.size})")
         if (approvals.isEmpty()) Text("暂无审批请求", color = TextDim, modifier = Modifier.padding(horizontal = 18.dp))
-        approvals.forEach { raw ->
-            val a = raw.asObject()
+        approvals.forEach { a ->
             CardBox {
                 Text(a.str("tool").ifEmpty { "工具调用" }, fontWeight = FontWeight.Bold, color = TextMain)
                 Text("主机: ${a.str("executor_id").ifEmpty { "未知" }}  ·  ${a.str("cwd")}", color = TextDim, style = MaterialTheme.typography.labelSmall)
@@ -99,12 +87,11 @@ fun TasksScreen(nav: NavHostController) {
 
         SectionTitle("Agent 提问 (${questions.size})")
         if (questions.isEmpty()) Text("暂无提问", color = TextDim, modifier = Modifier.padding(horizontal = 18.dp))
-        questions.forEach { raw ->
-            val q = raw.asObject()
+        questions.forEach { q ->
             var answer by remember(q.str("id")) { mutableStateOf("") }
             CardBox {
                 Text(q.str("question"), color = TextMain, fontWeight = FontWeight.SemiBold)
-                val options = q.arr("options").map { it.asObject().str("label").ifEmpty { it.toString().trim('"') } }
+                val options = q.arr("options").map { it.agentOptionLabel() }
                 if (options.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
                     options.forEach { opt ->

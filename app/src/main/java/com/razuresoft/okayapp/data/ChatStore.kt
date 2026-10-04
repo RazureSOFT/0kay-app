@@ -21,14 +21,14 @@ import java.util.UUID
 
 data class FileRef(val name: String, val url: String, val mime: String = "", val size: Long = 0)
 
-class ChatMessage(
+data class ChatMessage(
     val id: String,
     val role: String,
-    var content: String,
+    val content: String,
     val images: List<String> = emptyList(),
     val files: List<FileRef> = emptyList(),
-    var thinkSummary: String? = null,
-    var emotion: JsonObject? = null,
+    val thinkSummary: String? = null,
+    val emotion: JsonObject? = null,
     val timestamp: Long = System.currentTimeMillis(),
 )
 
@@ -69,8 +69,23 @@ class ChatStore(context: Context, val api: OkayApi) {
     }
 
     fun resetSession() {
+        val oldSessionId = sessionId
         prefs.edit().putString(KEY_SESSION, UUID.randomUUID().toString()).apply()
         messages.clear()
+        // Don't orphan the old session's proactive notes on the server.
+        scope.launch {
+            runCatching {
+                val notes = api.get("/api/life/notifications", listOf("session_id" to "app:$oldSessionId"))
+                    .asObject().arr("notifications")
+                val ids = notes.mapNotNull { it.asObject().str("id").takeIf { id -> id.isNotEmpty() } }
+                if (ids.isNotEmpty()) {
+                    api.post("/api/life/notifications", jsonOf(
+                        "session_id" to jsStr("app:$oldSessionId"),
+                        "ids" to JsonArray(ids.map { jsStr(it) }),
+                    ))
+                }
+            }
+        }
     }
 
     private var sse: EventSource? = null
@@ -109,11 +124,11 @@ class ChatStore(context: Context, val api: OkayApi) {
         )
 
         fun pushChunk() {
-            val existing = messages.firstOrNull { it.id == replyId }
-            if (existing != null) {
-                existing.content = acc
-                existing.thinkSummary = think
-                existing.emotion = emo
+            val index = messages.indexOfFirst { it.id == replyId }
+            if (index >= 0) {
+                // Replace (never mutate) the row: Compose observes list writes,
+                // not writes to a plain var field.
+                messages[index] = messages[index].copy(content = acc, thinkSummary = think, emotion = emo)
             } else {
                 messages.add(ChatMessage(replyId, "assistant", acc, thinkSummary = think, emotion = emo))
             }
@@ -199,12 +214,12 @@ class ChatStore(context: Context, val api: OkayApi) {
 
     suspend fun fetchNotifications(): List<Triple<String, String, String>> {
         return try {
-            val resp = api.get("/api/life/notifications").asObject()
-            val current = "app:$sessionId"
+            // Only this app's session: proactive notes for other adapters/webui
+            // sessions are theirs to acknowledge.
+            val resp = api.get("/api/life/notifications", listOf("session_id" to "app:$sessionId")).asObject()
             resp.arr("notifications").mapNotNull { n ->
                 val o = n.asObject()
                 val sid = o.str("session_id")
-                if (sid.isNotEmpty() && sid.startsWith("webui:")) return@mapNotNull null
                 Triple(o.str("id"), o.str("text"), sid)
             }
         } catch (e: Exception) {

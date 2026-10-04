@@ -64,8 +64,8 @@ fun Live2DStage(repo: AppRepo, modifier: Modifier = Modifier) {
             WebView(ctx).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                settings.allowFileAccess = true
-                settings.allowUniversalAccessFromFileURLs = true
+                settings.allowFileAccess = false
+                settings.allowUniversalAccessFromFileURLs = false
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 webViewClient = WebViewClient()
                 webView = this

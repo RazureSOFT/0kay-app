@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,25 +41,12 @@ import kotlinx.serialization.json.JsonObject
  */
 @Composable
 fun ApprovalOverlay(repo: AppRepo) {
-    var agentApproval by remember { mutableStateOf<JsonObject?>(null) }
-    var agentQuestion by remember { mutableStateOf<JsonObject?>(null) }
+    // Agent 收件箱来自 repo 单例轮询，和任务页共享同一份数据，回答后即时刷新。
+    val approvals by repo.inbox.approvals.collectAsState()
+    val questions by repo.inbox.questions.collectAsState()
     var lifeApproval by remember { mutableStateOf<JsonObject?>(null) }
-
-    // Agent 收件箱轮询（WebUI 为 1.5s，这里 2.5s 折中省电）
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            if (agentApproval == null && agentQuestion == null) {
-                runCatching {
-                    val inbox = repo.api.get("/api/agent/inbox").asObject()
-                    agentApproval = inbox.arr("approvals").firstOrNull()?.asObject()
-                    if (agentApproval == null) {
-                        agentQuestion = inbox.arr("questions").firstOrNull()?.asObject()
-                    }
-                }
-            }
-            delay(2500)
-        }
-    }
+    // Items the user chose to defer: hidden without being answered.
+    var deferred by remember { mutableStateOf(setOf<String>()) }
 
     // L.I.F.E 邮件审批轮询（WebUI 为 2.5s）
     LaunchedEffect(Unit) {
@@ -73,7 +61,7 @@ fun ApprovalOverlay(repo: AppRepo) {
         }
     }
 
-    agentApproval?.let { a ->
+    approvals.firstOrNull { it.str("id") !in deferred }?.let { a ->
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Agent 请求执行操作", fontWeight = FontWeight.Bold) },
@@ -94,21 +82,21 @@ fun ApprovalOverlay(repo: AppRepo) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { resolveAgentApproval(repo, a, true) { agentApproval = null } }) {
+                TextButton(onClick = { resolveAgentApproval(repo, a, true) }) {
                     Text("允许", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { resolveAgentApproval(repo, a, false) { agentApproval = null } }) {
+                TextButton(onClick = { resolveAgentApproval(repo, a, false) }) {
                     Text("拒绝", color = Danger)
                 }
             },
         )
     }
 
-    agentQuestion?.let { q ->
+    questions.firstOrNull { it.str("id") !in deferred }?.let { q ->
         var answer by remember(q.str("id")) { mutableStateOf("") }
-        val options = q.arr("options").map { it.toString().trim('"') }
+        val options = q.arr("options").map { it.agentOptionLabel() }
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Agent 向你提问", fontWeight = FontWeight.Bold) },
@@ -117,9 +105,7 @@ fun ApprovalOverlay(repo: AppRepo) {
                     Text(q.str("question"), fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(10.dp))
                     options.forEach { opt ->
-                        TextButton(onClick = {
-                            resolveAgentQuestion(repo, q, opt) { agentQuestion = null }
-                        }) { Text("▸ $opt") }
+                        TextButton(onClick = { resolveAgentQuestion(repo, q, opt) }) { Text("▸ $opt") }
                     }
                     OutlinedTextField(
                         value = answer,
@@ -132,11 +118,11 @@ fun ApprovalOverlay(repo: AppRepo) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (answer.isNotBlank()) resolveAgentQuestion(repo, q, answer) { agentQuestion = null }
+                    if (answer.isNotBlank()) resolveAgentQuestion(repo, q, answer)
                 }) { Text("发送回答") }
             },
             dismissButton = {
-                TextButton(onClick = { agentQuestion = null }) { Text("稍后再说") }
+                TextButton(onClick = { deferred = deferred + q.str("id") }) { Text("稍后再说") }
             },
         )
     }
@@ -169,7 +155,7 @@ fun ApprovalOverlay(repo: AppRepo) {
     }
 }
 
-private fun resolveAgentApproval(repo: AppRepo, item: JsonObject, allow: Boolean, done: () -> Unit) {
+private fun resolveAgentApproval(repo: AppRepo, item: JsonObject, allow: Boolean) {
     repo.launchUi {
         runCatching {
             repo.api.post(
@@ -177,11 +163,11 @@ private fun resolveAgentApproval(repo: AppRepo, item: JsonObject, allow: Boolean
                 jsonOf("id" to jsStr(item.str("id")), "executor_id" to jsStr(item.str("executor_id")), "allow" to jsBool(allow)),
             )
         }
-        done()
+        repo.inbox.refresh()
     }
 }
 
-private fun resolveAgentQuestion(repo: AppRepo, item: JsonObject, answer: String, done: () -> Unit) {
+private fun resolveAgentQuestion(repo: AppRepo, item: JsonObject, answer: String) {
     repo.launchUi {
         runCatching {
             repo.api.post(
@@ -189,7 +175,7 @@ private fun resolveAgentQuestion(repo: AppRepo, item: JsonObject, answer: String
                 jsonOf("id" to jsStr(item.str("id")), "executor_id" to jsStr(item.str("executor_id")), "answer" to jsStr(answer)),
             )
         }
-        done()
+        repo.inbox.refresh()
     }
 }
 

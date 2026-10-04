@@ -56,6 +56,9 @@ fun ProviderEditScreen(nav: NavHostController, id: String) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var ok by remember { mutableStateOf(false) }
+    // The server only returns the masked key; keep it as the placeholder and
+    // never round-trip it as a credential (see below).
+    var maskedKey by remember { mutableStateOf("") }
 
     LaunchedEffect(id) {
         if (isNew) return@LaunchedEffect
@@ -66,7 +69,7 @@ fun ProviderEditScreen(nav: NavHostController, id: String) {
                 baseUrl = p.str("base_url"); defaultModel = p.str("default_model")
                 enabled = p.bool("enabled")
                 models = p.arr("models").joinToString("\n") { it.toString().trim('"') }
-                apiKey = p.str("api_key_masked").ifEmpty { p.str("api_key") }
+                maskedKey = p.str("api_key_masked")
             }
         }.onFailure { error = it.message }
     }
@@ -80,7 +83,8 @@ fun ProviderEditScreen(nav: NavHostController, id: String) {
         Spacer(Modifier.height(8.dp))
         AppTextField(baseUrl, { baseUrl = it }, label = "Base URL")
         Spacer(Modifier.height(8.dp))
-        AppTextField(apiKey, { apiKey = it }, label = "API Key", password = true)
+        AppTextField(apiKey, { apiKey = it }, label = "API Key", password = true,
+            placeholder = if (maskedKey.isNotEmpty()) maskedKey else null)
         Spacer(Modifier.height(8.dp))
         AppTextField(models, { models = it }, label = "模型（每行一个）", singleLine = false)
         Spacer(Modifier.height(8.dp))
@@ -100,7 +104,8 @@ fun ProviderEditScreen(nav: NavHostController, id: String) {
                             "id" to jsStr(pid.trim()),
                             "provider" to jsStr(provider.trim().ifEmpty { "openai" }),
                             "name" to jsStr(name.trim()),
-                            "api_key" to jsStr(apiKey),
+                            // Empty key field keeps the stored credential.
+                            "api_key" to jsStr(apiKey.trim()),
                             "base_url" to jsStr(baseUrl.trim()),
                             "default_model" to jsStr(defaultModel.trim()),
                             "enabled" to jsBool(enabled),

@@ -47,6 +47,10 @@ jobs:
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk out/0kay-app.apk
 
+      - name: Read versionName
+        id: version
+        run: echo "name=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -58,8 +62,10 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0
-          name: 0KAY App v0.2.0 (native Compose)
+          # Tag follows app/build.gradle.kts versionName, not a fixed string,
+          # so successive main builds produce distinct releases.
+          tag_name: v${{ steps.version.outputs.name }}
+          name: 0KAY App v${{ steps.version.outputs.name }} (native Compose)
           body: |
             Android APK for the 0KAY companion — rewritten in native Jetpack Compose.
 
