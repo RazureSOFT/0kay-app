@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import com.razuresoft.okayapp.ui.components.CardBox
 import com.razuresoft.okayapp.ui.components.EmptyBox
 import com.razuresoft.okayapp.ui.components.ErrorBox
+import com.razuresoft.okayapp.ui.components.Loading
+import com.razuresoft.okayapp.ui.components.ScreenScaffold
 import com.razuresoft.okayapp.ui.components.PrimaryButton
 import com.razuresoft.okayapp.ui.components.RowItem
 import com.razuresoft.okayapp.ui.components.SectionTitle
@@ -162,7 +164,6 @@ private fun BubbleCard(text: String, isUser: Boolean, isError: Boolean = false) 
 }
 
 @Composable
-fun AboutScreen(nav: NavHostController) {@Composable
 fun AboutScreen(nav: NavHostController) {
     val repo = LocalRepo.current
     var health by remember { mutableStateOf<String?>(null) }
