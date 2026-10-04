@@ -38,6 +38,7 @@ import com.razuresoft.okayapp.ui.screens.ProviderEditScreen
 import com.razuresoft.okayapp.ui.screens.ProvidersScreen
 import com.razuresoft.okayapp.ui.screens.ScanScreen
 import com.razuresoft.okayapp.ui.screens.SectionScreen
+import com.razuresoft.okayapp.ui.screens.SessionsScreen
 import com.razuresoft.okayapp.ui.screens.SessionScreen
 import com.razuresoft.okayapp.ui.screens.SettingsScreen
 import com.razuresoft.okayapp.ui.screens.SkillsScreen
@@ -55,6 +56,7 @@ object Routes {
     const val Status = "status"
     const val Tasks = "tasks"
     const val More = "more"
+    const val Sessions = "sessions"
     const val Session = "session"
     const val Settings = "settings"
     const val Section = "section"
@@ -128,6 +130,7 @@ fun AppRoot() {
             composable(Routes.Status) { StatusScreen(nav) }
             composable(Routes.Tasks) { TasksScreen(nav) }
             composable(Routes.More) { MoreScreen(nav) }
+            composable(Routes.Sessions) { SessionsScreen(nav) }
             composable("${Routes.Session}/{id}") { SessionScreen(nav, it.arguments?.getString("id").orEmpty()) }
             composable(Routes.Settings) { SettingsScreen(nav) }
             composable("${Routes.Section}/{id}") { SectionScreen(nav, it.arguments?.getString("id").orEmpty()) }

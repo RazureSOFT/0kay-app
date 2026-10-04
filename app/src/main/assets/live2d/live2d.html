@@ -85,14 +85,47 @@
     var d = document.getElementById('mood'); d.style.display = 'block'; d.textContent = 'Live2D: ' + (e && e.message || e);
   });
 
+  var tf = { x: 0, y: 0, scale: 1 };
   function fit() {
     if (!model) return;
     var scale = Math.min(window.innerWidth / model.width, window.innerHeight * 0.88 / model.height) * 1.0;
-    model.scale.set(scale);
-    model.x = window.innerWidth / 2;
-    model.y = window.innerHeight * 0.55;
+    model.scale.set(scale * tf.scale);
+    model.x = window.innerWidth / 2 + tf.x;
+    model.y = window.innerHeight * 0.55 + tf.y;
     model.anchor.set(0.5, 0.5);
   }
+
+  // 单指拖拽 + 双指捏合缩放（触摸不透传，避免与页面滚动冲突）
+  (function () {
+    var stage = document.getElementById('stage');
+    stage.style.touchAction = 'none';
+    var pointers = new Map();
+    var pinchStart = null;
+    stage.addEventListener('pointerdown', function (e) {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2) {
+        var pts = Array.from(pointers.values());
+        pinchStart = { dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), scale: tf.scale };
+      }
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (!pointers.has(e.pointerId)) return;
+      var prev = pointers.get(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2 && pinchStart) {
+        var pts = Array.from(pointers.values());
+        var d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        tf.scale = Math.min(3.2, Math.max(0.08, pinchStart.scale * d / pinchStart.dist));
+        fit();
+      } else if (pointers.size === 1) {
+        tf.x += e.clientX - prev.x;
+        tf.y += e.clientY - prev.y;
+        fit();
+      }
+    });
+    window.addEventListener('pointerup', function (e) { pointers.delete(e.pointerId); pinchStart = null; });
+    window.addEventListener('pointercancel', function (e) { pointers.delete(e.pointerId); pinchStart = null; });
+  })();
 
   function setMood(text) {
     var d = document.getElementById('mood');

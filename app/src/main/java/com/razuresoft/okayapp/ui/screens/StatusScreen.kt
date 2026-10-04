@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
+import com.razuresoft.okayapp.ui.components.WavyBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -103,9 +103,9 @@ fun StatusScreen(nav: NavHostController) {
 
         SectionTitle("精力")
         CardBox {
-            LinearProgressIndicator(
-                progress = { energy.toFloat() },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
+            WavyBar(
+                energy.toFloat(),
+                modifier = Modifier.fillMaxWidth(),
                 color = if (energy < 0.2) Danger else Primary,
             )
             Spacer(Modifier.height(6.dp))
@@ -135,9 +135,9 @@ fun StatusScreen(nav: NavHostController) {
 private fun EmotionBar(label: String, value: Double, color: Color) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = TextDim, style = MaterialTheme.typography.labelMedium, modifier = Modifier.fillMaxWidth(0.38f))
-        LinearProgressIndicator(
-            progress = { ((value + 1.0) / 2.0).coerceIn(0.0, 1.0).toFloat() },
-            modifier = Modifier.weight(1f).height(6.dp),
+        WavyBar(
+            ((value + 1.0) / 2.0).toFloat(),
+            modifier = Modifier.weight(1f),
             color = color,
         )
         Text("%.2f".format(value), color = TextMain, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp))

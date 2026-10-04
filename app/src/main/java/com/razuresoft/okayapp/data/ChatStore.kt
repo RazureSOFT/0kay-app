@@ -59,6 +59,8 @@ class ChatStore(context: Context, val api: OkayApi) {
     val isTyping = mutableStateOf(false)
     val error = mutableStateOf<String?>(null)
     val voiceEnabled = mutableStateOf(false)
+    /** 回复完成后等待播放 TTS 的文本 */
+    val speakPending = mutableStateOf<String?>(null)
     var currentTaskId: String? = null
         private set
 
@@ -128,6 +130,7 @@ class ChatStore(context: Context, val api: OkayApi) {
                     }
                     if (event == "done" || jo?.bool("done") == true) {
                         if (acc.isNotEmpty()) pushChunk()
+                        if (voiceEnabled.value && acc.isNotBlank()) speakPending.value = acc
                         isTyping.value = false
                         return@launch
                     }
@@ -177,6 +180,9 @@ class ChatStore(context: Context, val api: OkayApi) {
     fun speak(text: String) {
         if (voiceEnabled.value && text.isNotBlank()) live2d.speakText.value = text
     }
+
+    /** 语音合成：返回音频字节（POST /api/tts）。 */
+    suspend fun tts(text: String): ByteArray = api.rawPost("/api/tts", jsonOf("text" to jsStr(text.take(600))))
 
     /** Maps valence/arousal/irritation to an expression index, mirroring the WebUI. */
     fun expressionFor(emo: JsonObject?): Int? {
