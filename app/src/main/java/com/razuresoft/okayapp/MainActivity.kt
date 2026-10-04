@@ -21,11 +21,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         repo = AppRepo(applicationContext)
+        requestNotificationPermission()
         handlePairingIntent(intent)
         setContent {
             CompositionLocalProvider(LocalRepo provides repo) {
                 OkayTheme { AppRoot() }
             }
+        }
+    }
+
+    /** Android 13+ 通知权限：主动消息到达时允许系统通知。 */
+    private fun requestNotificationPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
     }
 
