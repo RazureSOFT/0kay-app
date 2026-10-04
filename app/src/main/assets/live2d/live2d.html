@@ -27,7 +27,9 @@
   function load(src) {
     return new Promise(function (res, rej) {
       var s = document.createElement('script');
-      s.src = src; s.onload = res; s.onerror = function () { rej(new Error('load fail: ' + src)); };
+      s.src = src; s.async = false;
+      s.onload = res;
+      s.onerror = function () { rej(new Error('failed to load ' + src)); };
       document.head.appendChild(s);
     });
   }
@@ -35,18 +37,38 @@
   var app, model = null, speaking = false, idleTimer = null;
   var caps = { motionGroups: [], expressionNames: [], lipSyncParam: 'ParamMouthOpenY' };
 
-  window.onerror = function (m) { var d = document.getElementById('mood'); d.style.display = 'block'; d.textContent = 'Live2D error: ' + m; };
+  function setMood(text, sticky) {
+    var d = document.getElementById('mood');
+    d.style.display = 'block'; d.textContent = text;
+    clearTimeout(setMood._t);
+    if (!sticky) setMood._t = setTimeout(function () { d.style.display = 'none'; }, 2500);
+  }
+  window.onerror = function (m) { setMood('Live2D error: ' + m, true); };
 
+  function fail(msg) { setMood('Live2D: ' + msg, true); }
+
+  if (!modelUrl) { fail('no model url'); return; }
+
+  // pixi-live2d-display@0.4.0 is self-contained (Cubism 2 + Cubism 4); the
+  // standalone cubism2.min.js / cubism4.min.js are stale duplicates that also
+  // clobber PIXI.live2d.config.cubism4, so they are intentionally NOT loaded.
   Promise.all([
     load('pixi.min.js'),
     load('live2d.core.js'),
     load('live2dcubismcore.min.js'),
-    load('cubism2.min.js'),
     load('pixi-live2d-display.min.js'),
   ]).then(function () {
-    if (!window.PIXI || !window.PIXI.live2d) throw new Error('runtime missing');
+    // Explicit, named diagnostics instead of a bare "runtime missing".
+    if (!window.PIXI) throw new Error('PixiJS (pixi.min.js) did not load');
+    if (!window.PIXI.live2d) throw new Error('pixi-live2d-display.min.js did not attach PIXI.live2d');
     PIXI.live2d.config.sound = false; // TTS is handled natively; avoid double audio
-    app = new PIXI.Application({ view: document.getElementById('stage'), backgroundAlpha: 0, resizeTo: window, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+    // PIXI 的 view 必须是 <canvas>，不能直接传容器 div
+    var canvas = document.createElement('canvas');
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    document.getElementById('stage').appendChild(canvas);
+    app = new PIXI.Application({ view: canvas, backgroundAlpha: 0, resizeTo: window, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2) });
     return PIXI.live2d.Live2DModel.from(modelUrl, { autoInteract: false });
   }).then(function (m) {
     model = m;
@@ -82,7 +104,7 @@
     });
     window.__0KAY_LIVE2D_READY__ = true;
   }).catch(function (e) {
-    var d = document.getElementById('mood'); d.style.display = 'block'; d.textContent = 'Live2D: ' + (e && e.message || e);
+    fail((e && e.message) || e);
   });
 
   var tf = { x: 0, y: 0, scale: 1 };
@@ -126,12 +148,6 @@
     window.addEventListener('pointerup', function (e) { pointers.delete(e.pointerId); pinchStart = null; });
     window.addEventListener('pointercancel', function (e) { pointers.delete(e.pointerId); pinchStart = null; });
   })();
-
-  function setMood(text) {
-    var d = document.getElementById('mood');
-    d.style.display = 'block'; d.textContent = text;
-    clearTimeout(setMood._t); setMood._t = setTimeout(function () { d.style.display = 'none'; }, 2500);
-  }
 
   function startIdle() {
     clearInterval(idleTimer);
