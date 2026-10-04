@@ -47,6 +47,7 @@ import com.razuresoft.okayapp.ui.screens.StatusScreen
 import com.razuresoft.okayapp.ui.screens.TasksScreen
 import com.razuresoft.okayapp.ui.screens.UsageScreen
 import com.razuresoft.okayapp.ui.theme.Bg
+import com.razuresoft.okayapp.ui.theme.TextDim
 
 val LocalRepo = staticCompositionLocalOf<AppRepo> { error("AppRepo not provided") }
 
