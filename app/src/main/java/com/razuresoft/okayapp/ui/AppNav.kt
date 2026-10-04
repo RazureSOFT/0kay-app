@@ -168,6 +168,7 @@ fun AppRoot() {
             }
         },
     ) { padding ->
+        com.razuresoft.okayapp.ui.components.ApprovalOverlay(repo)
         NavHost(
             navController = nav,
             startDestination = if (c.connected) Routes.Chat else Routes.Login,

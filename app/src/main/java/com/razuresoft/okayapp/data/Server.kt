@@ -86,6 +86,11 @@ class AppRepo(context: Context) {
     init {
         scope.launch { store.flow.collect { api.config = it } }
     }
+
+    /** 主线程协程里执行一段异步工作（UI 层的一次性调用用这个，别自建 scope）。 */
+    fun launchUi(block: suspend () -> Unit) {
+        scope.launch { block() }
+    }
 }
 
 // ---- Json helpers -------------------------------------------------------
