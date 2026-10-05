@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -82,8 +83,7 @@ fun LoginScreen(nav: NavHostController) {
                 val resp = repo.api.post("/api/pairing/status", jsonOf("id" to jsStr(pairingId), "secret" to jsStr(pairingSecret))).asObject()
                 if (resp.bool("approved")) {
                     val t = resp.str("token")
-                    repo.store.save(repo.api.config.baseUrl, t, "")
-                    repo.api.config = ServerConfig(repo.api.config.baseUrl, t, "")
+                    repo.connect(ServerConfig(repo.api.config.baseUrl, t, ""))
                     pairingCode = null; pairingId = ""
                     nav.navigate(Routes.Chat) { popUpTo(0) }
                     return@LaunchedEffect
@@ -104,6 +104,7 @@ fun LoginScreen(nav: NavHostController) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .imePadding()
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -125,6 +126,8 @@ fun LoginScreen(nav: NavHostController) {
                         try {
                             val base = normalizeBase(url)
                             if (base.isBlank()) throw IllegalStateException("请输入服务器地址")
+                            // 配对握手前还没有可持久化的凭据：这里只把内存里的 API
+                            // 指向用户输入的地址（不落盘），批准后再 connect() 保存。
                             repo.api.config = ServerConfig(base)
                             val resp = repo.api.post(
                                 "/api/pairing/request",
@@ -166,8 +169,7 @@ fun LoginScreen(nav: NavHostController) {
                             val base = normalizeBase(url)
                             if (base.isBlank()) throw IllegalStateException("请输入服务器地址")
                             val cfg = ServerConfig(base, token.trim(), pin.trim())
-                            repo.store.save(cfg.baseUrl, cfg.token, cfg.pin)
-                            repo.api.config = cfg
+                            repo.connect(cfg)
                             repo.api.get("/api/auth/session")
                             repo.api.get("/health")
                             nav.navigate(Routes.Chat) { popUpTo(0) }

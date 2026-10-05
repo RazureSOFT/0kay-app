@@ -27,6 +27,7 @@ import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.Routes
 import com.razuresoft.okayapp.ui.components.RowItem
 import com.razuresoft.okayapp.ui.components.SectionTitle
+import com.razuresoft.okayapp.ui.theme.BottomBarInset
 import com.razuresoft.okayapp.ui.theme.TextFaint
 import com.razuresoft.okayapp.ui.theme.TextMain
 import kotlinx.coroutines.launch
@@ -94,6 +95,6 @@ fun MoreScreen(nav: NavHostController) {
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(18.dp),
         )
-        Spacer(Modifier.height(96.dp))
+        Spacer(Modifier.height(BottomBarInset))
     }
 }

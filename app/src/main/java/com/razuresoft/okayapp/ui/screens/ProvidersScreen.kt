@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.Routes
 import com.razuresoft.okayapp.ui.components.Badge
+import com.razuresoft.okayapp.ui.components.ConfirmDialog
 import com.razuresoft.okayapp.ui.components.DangerTextButton
 import com.razuresoft.okayapp.ui.components.EmptyBox
 import com.razuresoft.okayapp.ui.components.ErrorBox
@@ -46,6 +47,7 @@ fun ProvidersScreen(nav: NavHostController) {
     val scope = rememberCoroutineScope()
     var data by remember { mutableStateOf<JsonObject?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf<JsonObject?>(null) }
 
     fun refresh() {
         scope.launch { runCatching { data = repo.api.get("/api/providers").asObject() }.onFailure { error = it.message } }
@@ -79,12 +81,7 @@ fun ProvidersScreen(nav: NavHostController) {
                         Text("默认: ${p.str("default_model")}", color = TextDim, style = MaterialTheme.typography.labelSmall)
                     }
                     Spacer(Modifier.weight(1f))
-                    DangerTextButton("删除", {
-                        scope.launch {
-                            runCatching { repo.api.delete("/api/providers/${p.str("id")}") }
-                            refresh()
-                        }
-                    })
+                    DangerTextButton("删除", { confirmDelete = p })
                 }
             }
         }
@@ -92,5 +89,22 @@ fun ProvidersScreen(nav: NavHostController) {
             PrimaryButton("新增供应商", { nav.navigate("${Routes.Provider}/__new__") }, Modifier.fillMaxWidth())
         }
         Spacer(Modifier.height(24.dp))
+    }
+
+    confirmDelete?.let { p ->
+        ConfirmDialog(
+            title = "删除供应商",
+            message = "确定删除「${p.str("name").ifEmpty { p.str("id") }}」？此操作不可撤销。",
+            confirmLabel = "删除",
+            danger = true,
+            onConfirm = {
+                val id = p.str("id")
+                scope.launch {
+                    error = runCatching { repo.api.delete("/api/providers/$id") }.exceptionOrNull()?.message
+                    refresh()
+                }
+            },
+            onDismiss = { confirmDelete = null },
+        )
     }
 }

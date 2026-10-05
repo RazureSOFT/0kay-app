@@ -28,10 +28,19 @@ class OkayApi {
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
+        // 普通请求必须有读超时，否则半开连接会永久挂住调用方。
+        .readTimeout(60, TimeUnit.SECONDS)
+        .build()
+
+    /**
+     * SSE 是长连接，读超时必须无限；用一个单独的 client，避免把无限读超时
+     * 传染给普通 GET/POST。
+     */
+    val sseClient: OkHttpClient = client.newBuilder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
-    private val sseFactory = EventSources.createFactory(client)
+    private val sseFactory = EventSources.createFactory(sseClient)
 
     private fun buildUrl(path: String, params: List<Pair<String, Any?>> = emptyList()): HttpUrl {
         val base = config.baseUrl.trimEnd('/')

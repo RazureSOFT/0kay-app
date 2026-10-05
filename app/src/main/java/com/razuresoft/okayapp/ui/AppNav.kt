@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
@@ -47,8 +46,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -204,7 +205,10 @@ private fun FloatingNavBar(nav: NavHostController, route: String?, hazeState: Ha
     val selectedIndex = tabs.indexOfFirst { it.route == route }.coerceAtLeast(0)
 
     val barColor = MaterialTheme.colorScheme.surfaceContainer
-    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding().padding(bottom = 10.dp)) {
+    // 注意：不要在这里再套 navigationBarsPadding()。AppRoot 的 Scaffold 已经
+    // 把系统栏 inset 计入了 content padding，再套一次会把胶囊顶高，配合各屏
+    // 硬编码的底部留白就会压住输入框。
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 10.dp)) {
         Surface(
             shape = RoundedCornerShape(50),
             color = Color.Transparent,
@@ -228,6 +232,7 @@ private fun FloatingNavBar(nav: NavHostController, route: String?, hazeState: Ha
 @Composable
 private fun BoxWithIndicator(selectedIndex: Int, route: String?, nav: NavHostController) {
     val itemHeight = 58.dp
+    val haptics = LocalHapticFeedback.current
     BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
         val itemWidth = maxWidth / tabs.size
         // 小胶囊的滑动：弹性动画驱动 x 偏移
@@ -262,6 +267,7 @@ private fun BoxWithIndicator(selectedIndex: Int, route: String?, nav: NavHostCon
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                             ) {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 nav.navigate(tab.route) {
                                     popUpTo(nav.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true

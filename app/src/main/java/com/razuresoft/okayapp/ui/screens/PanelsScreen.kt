@@ -29,6 +29,7 @@ import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.components.AppTextField
 import com.razuresoft.okayapp.ui.components.Badge
 import com.razuresoft.okayapp.ui.components.CardBox
+import com.razuresoft.okayapp.ui.components.ConfirmDialog
 import com.razuresoft.okayapp.ui.components.DangerTextButton
 import com.razuresoft.okayapp.ui.components.EmptyBox
 import com.razuresoft.okayapp.ui.components.ErrorBox
@@ -129,6 +130,7 @@ fun UsageScreen(nav: NavHostController) {
     val scope = rememberCoroutineScope()
     var usage by remember { mutableStateOf<JsonObject?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var confirmClearUsage by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching { usage = repo.api.get("/api/usage").asObject() }.onFailure { error = it.message }
@@ -169,13 +171,24 @@ fun UsageScreen(nav: NavHostController) {
             RowItem(title = day, value = "${o.int("total")} tok")
         }
         Column(Modifier.padding(14.dp)) {
-            DangerTextButton("清零用量", {
+            DangerTextButton("清零用量", { confirmClearUsage = true })
+        }
+    }
+
+    if (confirmClearUsage) {
+        ConfirmDialog(
+            title = "清零用量",
+            message = "将删除全部用量统计记录，无法恢复。",
+            confirmLabel = "清零",
+            danger = true,
+            onConfirm = {
                 scope.launch {
                     runCatching { repo.api.delete("/api/usage") }
                     runCatching { usage = repo.api.get("/api/usage").asObject() }
                 }
-            })
-        }
+            },
+            onDismiss = { confirmClearUsage = false },
+        )
     }
 }
 

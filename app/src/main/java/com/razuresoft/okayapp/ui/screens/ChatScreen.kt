@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
@@ -46,7 +48,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +65,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
@@ -77,6 +82,7 @@ import com.razuresoft.okayapp.ui.components.Live2DStage
 import com.razuresoft.okayapp.ui.components.MarkdownText
 import com.razuresoft.okayapp.ui.theme.Accent
 import com.razuresoft.okayapp.ui.theme.BorderC
+import com.razuresoft.okayapp.ui.theme.BottomBarInset
 import com.razuresoft.okayapp.ui.theme.CardAlt
 import com.razuresoft.okayapp.ui.theme.Danger
 import com.razuresoft.okayapp.ui.theme.Primary
@@ -107,20 +113,17 @@ fun ChatScreen(nav: NavHostController) {
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     var pipEnabled by remember { mutableStateOf(false) }
 
-    // 主动通知 -> 气泡
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            delay(4000)
-            val notes = chat.fetchNotifications()
-            if (notes.isNotEmpty()) {
-                notes.forEach { (id, text, _) ->
-                    if (chat.messages.none { it.id == "notification_$id" }) {
-                        chat.messages.add(ChatMessage("notification_$id", "assistant", text))
-                        // 主动消息同样可能带 [[motion:..]] / [[expression:..]] 标记。
-                        chat.dispatchMarkers(text)
-                    }
-                }
-                chat.acknowledgeNotifications(notes.map { it.first })
+    // 主动消息 -> 气泡。轮询已收归 AppRepo（唯一轮询者），聊天页只负责呈现，
+    // 并按 id 幂等去重。
+    val proactive by repo.proactive.collectAsState()
+    LaunchedEffect(proactive) {
+        proactive.forEach { n ->
+            val id = n.str("id")
+            if (id.isNotEmpty() && chat.messages.none { it.id == "notification_$id" }) {
+                val text = n.str("text")
+                chat.messages.add(ChatMessage("notification_$id", "assistant", text))
+                // 主动消息同样可能带 [[motion:..]] / [[expression:..]] 标记。
+                chat.dispatchMarkers(text)
             }
         }
     }
@@ -135,22 +138,32 @@ fun ChatScreen(nav: NavHostController) {
         }
     }
 
-    // TTS 播放 + 口型
-    LaunchedEffect(chat.speakPending.value) {
+    // TTS 播放 + 口型。key 必须是「新语音排队」的事件号：以前用
+    // speakPending.value 当 key，而协程体第一件事就是把它置空——key 一变
+    // Compose 立刻取消当前协程，正好取消在 chat.tts() 这个挂起点上，音频永远
+    // 拉不回来。现在消费不改变 key。
+    LaunchedEffect(chat.speakEvent) {
         val text = chat.speakPending.value ?: return@LaunchedEffect
-        chat.speakPending.value = null
         chat.speak(text)
         runCatching {
             val bytes = chat.tts(text)
             val file = File(context.cacheDir, "tts.mp3")
             file.writeBytes(bytes)
             player?.release()
-            MediaPlayer().apply {
+            player = MediaPlayer().apply {
                 setDataSource(file.absolutePath)
                 prepare()
                 start()
-                player = this
             }
+        }
+    }
+
+    // 离开聊天页：释放播放器并掐断 SSE，否则流和 isTyping 会一直挂着。
+    DisposableEffect(Unit) {
+        onDispose {
+            player?.release()
+            player = null
+            chat.cancelStream()
         }
     }
 
@@ -189,6 +202,14 @@ fun ChatScreen(nav: NavHostController) {
         }
     }
 
+    fun send() {
+        val text = input.trim()
+        if (text.isEmpty() || chat.isTyping.value) return
+        input = ""
+        chat.sendMessage(text, pendingImages.toList(), pendingFiles.toList()) { }
+        pendingImages.clear(); pendingFiles.clear()
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -213,7 +234,7 @@ fun ChatScreen(nav: NavHostController) {
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            Column(Modifier.fillMaxSize().imePadding().padding(bottom = 84.dp)) {
+            Column(Modifier.fillMaxSize().imePadding().padding(bottom = BottomBarInset)) {
                 if (showStage) {
                     Box(Modifier.fillMaxWidth().height(230.dp)) {
                         Live2DStage(repo, Modifier.fillMaxSize())
@@ -297,17 +318,11 @@ fun ChatScreen(nav: NavHostController) {
                         placeholder = { Text("说点什么…", color = TextFaint) },
                         shape = RoundedCornerShape(22.dp),
                         maxLines = 4,
+                        // 键盘回车=发送（换行仍可用 Shift/软键盘换行键）。
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { send() }),
                     )
-                    IconButton(
-                        onClick = {
-                            val text = input.trim()
-                            if (text.isEmpty() || chat.isTyping.value) return@IconButton
-                            input = ""
-                            chat.sendMessage(text, pendingImages.toList(), pendingFiles.toList()) { }
-                            pendingImages.clear(); pendingFiles.clear()
-                        },
-                        enabled = !chat.isTyping.value,
-                    ) {
+                    IconButton(onClick = { send() }, enabled = !chat.isTyping.value) {
                         if (chat.isTyping.value) {
                             LoadingIndicator(Modifier.size(20.dp), color = Primary)
                         } else {
@@ -340,6 +355,23 @@ fun ChatScreen(nav: NavHostController) {
 private fun ComputerUsePip(repo: com.razuresoft.okayapp.data.AppRepo, modifier: Modifier) {
     var visible by remember { mutableStateOf(true) }
     if (!visible) return
+    val context = LocalContext.current
+    // WebView 必须显式 destroy，否则每次显示/隐藏 PiP 都会泄漏一个 WebView
+    // （及其解码线程）。
+    val webView = remember {
+        android.webkit.WebView(context).apply {
+            settings.javaScriptEnabled = true
+            settings.loadWithOverviewMode = true
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            loadUrl(repo.api.absoluteUrl("/api/agent/computeruse/stream"))
+        }
+    }
+    DisposableEffect(webView) {
+        onDispose {
+            webView.stopLoading()
+            webView.destroy()
+        }
+    }
     Box(
         modifier
             .size(150.dp, 220.dp)
@@ -349,14 +381,7 @@ private fun ComputerUsePip(repo: com.razuresoft.okayapp.data.AppRepo, modifier: 
     ) {
         androidx.compose.ui.viewinterop.AndroidView(
             modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
-                android.webkit.WebView(ctx).apply {
-                    settings.javaScriptEnabled = true
-                    settings.loadWithOverviewMode = true
-                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                    loadUrl(repo.api.absoluteUrl("/api/agent/computeruse/stream"))
-                }
-            },
+            factory = { webView },
         )
         Text(
             "computer use ✕",

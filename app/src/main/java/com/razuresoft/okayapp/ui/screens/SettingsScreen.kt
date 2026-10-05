@@ -15,6 +15,7 @@ import androidx.navigation.NavHostController
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.Routes
 import com.razuresoft.okayapp.ui.components.EmptyBox
+import com.razuresoft.okayapp.ui.components.ErrorBox
 import com.razuresoft.okayapp.ui.components.RowItem
 import com.razuresoft.okayapp.ui.components.SectionTitle
 import com.razuresoft.okayapp.data.arr
@@ -28,16 +29,18 @@ fun SettingsScreen(nav: NavHostController) {
     val repo = LocalRepo.current
     var sections by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
     var loaded by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         runCatching {
             sections = repo.api.get("/api/settings/sections", listOf("values" to "1"))
                 .asObject().arr("sections").map { it.asObject() }
-        }
+        }.onFailure { error = it.message }
         loaded = true
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        ErrorBox(error)
         SectionTitle("内置")
         Column {
             RowItem("Live2D 形象", subtitle = "模型选择与上传", onClick = { nav.navigate(Routes.Companion) })
@@ -54,6 +57,8 @@ fun SettingsScreen(nav: NavHostController) {
                 }
             }
         }
-        if (loaded && sections.isEmpty()) EmptyBox("没有可配置的分区")
+        // 只有「加载成功且确实没有分区」才是空态；失败必须报错，否则用户会以为
+        // 服务器没有可配置项。
+        if (loaded && sections.isEmpty() && error == null) EmptyBox("没有可配置的分区")
     }
 }

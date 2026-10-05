@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -74,7 +75,7 @@ fun ProviderEditScreen(nav: NavHostController, id: String) {
         }.onFailure { error = it.message }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+    Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(14.dp)) {
         AppTextField(pid, { pid = it }, label = "ID（唯一标识）")
         Spacer(Modifier.height(8.dp))
         AppTextField(name, { name = it }, label = "名称")

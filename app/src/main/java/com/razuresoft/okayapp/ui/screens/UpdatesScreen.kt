@@ -177,6 +177,9 @@ fun UpdatesScreen(nav: NavHostController) {
                                 has -> TonalButton(
                                     if (running && apply?.str("plugin") == name) "更新中…" else "更新",
                                     { applyUpdate(name, p.str("latest")) },
+                                    // 一次只能跑一个更新：进行中时禁用所有组件按钮，
+                                    // 否则会并发发起多个 /api/plugins/pm/update。
+                                    enabled = !running,
                                 )
                                 else -> Text("最新", color = TextFaint, style = MaterialTheme.typography.labelSmall)
                             }

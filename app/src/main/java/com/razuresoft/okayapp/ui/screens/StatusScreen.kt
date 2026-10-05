@@ -30,6 +30,7 @@ import com.razuresoft.okayapp.ui.components.CardBox
 import com.razuresoft.okayapp.ui.components.EmptyBox
 import com.razuresoft.okayapp.ui.components.ErrorBox
 import com.razuresoft.okayapp.ui.components.SectionTitle
+import com.razuresoft.okayapp.ui.theme.BottomBarInset
 import com.razuresoft.okayapp.ui.theme.Danger
 import com.razuresoft.okayapp.ui.theme.Primary
 import com.razuresoft.okayapp.ui.theme.Success
@@ -121,7 +122,7 @@ fun StatusScreen(nav: NavHostController) {
                 StatCell("健康插件", s.int("healthyPlugins").toString())
             }
         }
-        Spacer(Modifier.height(96.dp))
+        Spacer(Modifier.height(BottomBarInset))
     }
 }
 

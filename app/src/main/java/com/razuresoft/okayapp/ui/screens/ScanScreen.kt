@@ -85,8 +85,8 @@ fun ScanScreen(nav: NavHostController) {
             status = "正在连接并保存…"
             error = null
             try {
-                repo.store.save(cfg.baseUrl, cfg.token, cfg.pin)
-                repo.api.config = cfg
+                // connect() 会持久化并立刻生效，保证下面的探活用的是新地址。
+                repo.connect(cfg)
                 repo.api.get("/health")
                 status = "连接成功，已记住该服务器"
                 nav.navigate(Routes.Chat) { popUpTo(0) }

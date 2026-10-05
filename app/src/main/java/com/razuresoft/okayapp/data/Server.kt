@@ -79,15 +79,63 @@ fun normalizeBase(url: String): String {
 
 /** App-wide container: config store + HTTP API. */
 class AppRepo(context: Context) {
+    private val appContext = context.applicationContext
     val store = ServerStore(context)
     val api = OkayApi()
     val chat = ChatStore(context, api)
     val inbox = InboxStore(api)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    /** 前台标记，由 MainActivity 的 ActivityLifecycleCallbacks 维护。 */
+    @Volatile
+    var inForeground: Boolean = false
+
+    /**
+     * 伙伴主动消息，唯一轮询者。聊天页据此生成气泡；应用在后台时同时发系统
+     * 通知。保留最近 50 条，长时间没人看也不会无限增长。
+     */
+    val proactive = kotlinx.coroutines.flow.MutableStateFlow(emptyList<JsonObject>())
+
     init {
+        // 唯一写入者：config 只由 DataStore 流驱动。别处不要再直接给
+        // api.config 赋值，否则一次迟到的发射会覆盖刚保存的配置。
         scope.launch { store.flow.collect { api.config = it } }
         inbox.start()
+        startProactivePolling()
+    }
+
+    private fun startProactivePolling() {
+        scope.launch {
+            while (true) {
+                // 未配置服务器时不轮询：否则每个 tick 都抛「无效地址」被静默吞掉。
+                if (api.config.connected) {
+                    val notes = chat.fetchNotifications()
+                    if (notes.isNotEmpty()) {
+                        proactive.value = (proactive.value + notes.map { (id, text, sid) ->
+                            jsonOf("id" to jsStr(id), "text" to jsStr(text), "session_id" to jsStr(sid))
+                        }).takeLast(50)
+                        if (!inForeground) {
+                            notes.forEach { (id, text, _) -> Notifier.show(appContext, id.hashCode(), "0KAY", text) }
+                        }
+                        // 主动消息属于本 App 会话，收到即确认，避免服务端与 WebUI 侧堆积。
+                        chat.acknowledgeNotifications(notes.map { it.first })
+                    }
+                }
+                kotlinx.coroutines.delay(4_000)
+            }
+        }
+    }
+
+    /**
+     * 持久化连接信息并**立即**生效。
+     *
+     * DataStore 的发射是异步的，保存后马上发请求（例如配对成功后的探活）可能还
+     * 用着旧地址，所以这里在保存之后显式同步一次内存配置。写入的值与持久化的
+     * 值一致，随后到达的流发射不会覆盖成别的东西。
+     */
+    suspend fun connect(cfg: ServerConfig) {
+        store.save(cfg.baseUrl, cfg.token, cfg.pin)
+        api.config = cfg
     }
 
     /** 主线程协程里执行一段异步工作（UI 层的一次性调用用这个，别自建 scope）。 */
@@ -158,6 +206,8 @@ class InboxStore(private val api: OkayApi) {
     }
 
     suspend fun refresh() {
+        // 没配服务器就别发请求：buildUrl 会抛「无效地址」，纯噪音。
+        if (!api.config.connected) return
         runCatching {
             val inbox = api.get("/api/agent/inbox").asObject()
             approvals.value = inbox.arr("approvals").map { it.asObject() }

@@ -1,10 +1,12 @@
 package com.razuresoft.okayapp.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -77,7 +79,7 @@ fun SectionScreen(nav: NavHostController, id: String) {
         return
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
         Text(
             s.str("description"),
             color = TextDim,
@@ -102,7 +104,12 @@ fun SectionScreen(nav: NavHostController, id: String) {
                 "select" -> Column {
                     Text(label, color = TextDim, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 18.dp))
                     val options = f.arr("options").map { it.toString().trim('"') }
-                    Row(Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) {
+                    // 选项可能很多：必须可横向滚动，否则溢出屏幕且无法选择。
+                    Row(
+                        Modifier
+                            .padding(horizontal = 14.dp, vertical = 4.dp)
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
                         options.forEach { opt ->
                             TonalButton(
                                 if ((values[key] ?: "") == opt) "● $opt" else "○ $opt",

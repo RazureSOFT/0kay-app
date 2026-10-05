@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -55,6 +59,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.razuresoft.okayapp.ui.theme.Accent
@@ -148,8 +153,13 @@ fun PrimaryButton(
     enabled: Boolean = true,
     loading: Boolean = false,
 ) {
+    val haptics = LocalHapticFeedback.current
     Button(
-        onClick = onClick,
+        onClick = {
+            // 触感确认：全 App 的主操作都走这里，避免每处各写一遍。
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         enabled = enabled && !loading,
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
@@ -164,8 +174,8 @@ fun PrimaryButton(
 }
 
 @Composable
-fun TonalButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FilledTonalButton(onClick = onClick, modifier = modifier, shape = MaterialTheme.shapes.medium) {
+fun TonalButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    FilledTonalButton(onClick = onClick, modifier = modifier, enabled = enabled, shape = MaterialTheme.shapes.medium) {
         Text(text)
     }
 }
@@ -220,18 +230,63 @@ fun RowItem(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.fillMaxWidth(0.62f)) {
-            Text(title, color = TextMain)
+        Column(Modifier.weight(1f)) {
+            Text(title, color = TextMain, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, color = TextFaint, style = MaterialTheme.typography.labelSmall)
+                Text(
+                    subtitle,
+                    color = TextFaint,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
-        Spacer(Modifier.weight(1f))
         if (value != null) {
-            Text(value, color = TextDim, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            Spacer(Modifier.width(8.dp))
+            // 长值必须省略而不是硬裁：maxLines 单独用会把文字切掉半个字。
+            Text(
+                value,
+                color = TextDim,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         trailing?.invoke()
     }
+}
+
+/**
+ * 破坏性/不可逆操作的二次确认。全 App 共用一份，避免各屏自己拼 AlertDialog
+ * 而漏掉取消项或误用主色按钮。
+ */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String = "确认",
+    danger: Boolean = false,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = { onDismiss(); onConfirm() }) {
+                Text(
+                    confirmLabel,
+                    color = if (danger) Danger else MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
 }
 
 @Composable

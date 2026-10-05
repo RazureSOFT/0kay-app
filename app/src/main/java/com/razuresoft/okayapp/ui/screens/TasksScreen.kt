@@ -27,9 +27,11 @@ import androidx.navigation.NavHostController
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.components.CardBox
 import com.razuresoft.okayapp.ui.components.EmptyBox
+import com.razuresoft.okayapp.ui.components.ErrorBox
 import com.razuresoft.okayapp.ui.components.PrimaryButton
 import com.razuresoft.okayapp.ui.components.SectionTitle
 import com.razuresoft.okayapp.ui.components.TonalButton
+import com.razuresoft.okayapp.ui.theme.BottomBarInset
 import com.razuresoft.okayapp.ui.theme.Danger
 import com.razuresoft.okayapp.ui.theme.TextDim
 import com.razuresoft.okayapp.ui.theme.TextMain
@@ -53,23 +55,30 @@ fun TasksScreen(nav: NavHostController) {
     val scope = rememberCoroutineScope()
     val approvals by repo.inbox.approvals.collectAsState()
     val questions by repo.inbox.questions.collectAsState()
+    // 提交中的条目 id + 失败原因：连点会重复决议，失败必须可见。
+    var busy by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
 
     fun resolveInbox(kind: String, item: JsonObject, payload: JsonObject) {
+        val id = item.str("id")
         scope.launch {
-            runCatching {
+            busy = id
+            error = runCatching {
                 repo.api.post(
                     if (kind == "questions") "/api/agent/questions" else "/api/agent/approvals",
                     jsonOf(
-                        "id" to jsStr(item.str("id")),
+                        "id" to jsStr(id),
                         "executor_id" to jsStr(item.str("executor_id")),
                     ) + payload,
                 )
-            }
+            }.exceptionOrNull()?.message
             repo.inbox.refresh()
+            busy = null
         }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        ErrorBox(error)
         SectionTitle("待审批 (${approvals.size})")
         if (approvals.isEmpty()) Text("暂无审批请求", color = TextDim, modifier = Modifier.padding(horizontal = 18.dp))
         approvals.forEach { a ->
@@ -79,8 +88,8 @@ fun TasksScreen(nav: NavHostController) {
                 Text(a.obj("args").toString().take(400), color = TextDim, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PrimaryButton("允许", { resolveInbox("approvals", a, jsonOf("allow" to jsBool(true))) })
-                    TonalButton("拒绝", { resolveInbox("approvals", a, jsonOf("allow" to jsBool(false))) })
+                    PrimaryButton("允许", { resolveInbox("approvals", a, jsonOf("allow" to jsBool(true))) }, enabled = busy == null)
+                    TonalButton("拒绝", { resolveInbox("approvals", a, jsonOf("allow" to jsBool(false))) }, enabled = busy == null)
                 }
             }
         }
@@ -95,7 +104,12 @@ fun TasksScreen(nav: NavHostController) {
                 if (options.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
                     options.forEach { opt ->
-                        TonalButton(opt, { resolveInbox("questions", q, jsonOf("answer" to jsStr(opt))) }, Modifier.padding(vertical = 2.dp))
+                        TonalButton(
+                            opt,
+                            { resolveInbox("questions", q, jsonOf("answer" to jsStr(opt))) },
+                            Modifier.padding(vertical = 2.dp),
+                            enabled = busy == null,
+                        )
                     }
                 }
                 Spacer(Modifier.height(6.dp))
@@ -104,11 +118,11 @@ fun TasksScreen(nav: NavHostController) {
                 PrimaryButton("发送回答", {
                     resolveInbox("questions", q, jsonOf("answer" to jsStr(answer)))
                     answer = ""
-                })
+                }, enabled = busy == null && answer.isNotBlank())
             }
         }
 
-        Spacer(Modifier.height(96.dp))
+        Spacer(Modifier.height(BottomBarInset))
     }
 }
 

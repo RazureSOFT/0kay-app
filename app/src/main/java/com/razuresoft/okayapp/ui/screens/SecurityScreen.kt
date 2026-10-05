@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +27,7 @@ import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.components.AppTextField
 import com.razuresoft.okayapp.ui.components.Badge
 import com.razuresoft.okayapp.ui.components.CardBox
+import com.razuresoft.okayapp.ui.components.ConfirmDialog
 import com.razuresoft.okayapp.ui.components.DangerTextButton
 import com.razuresoft.okayapp.ui.components.ErrorBox
 import com.razuresoft.okayapp.ui.components.PrimaryButton
@@ -69,6 +71,7 @@ fun SecurityScreen(nav: NavHostController) {
     var pagesText by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
         runCatching {
@@ -103,7 +106,7 @@ fun SecurityScreen(nav: NavHostController) {
         subtitle = if (configured) "已设置访问 PIN" else "尚未设置 PIN",
         onBack = { nav.popBackStack() },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState())) {
             ErrorBox(error)
             notice?.let {
                 Text(it, color = Success, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
@@ -161,19 +164,7 @@ fun SecurityScreen(nav: NavHostController) {
                     })
                     Spacer(Modifier.padding(6.dp))
                     if (configured) {
-                        DangerTextButton("清除 PIN", {
-                            scope.launch {
-                                error = null; notice = null
-                                try {
-                                    repo.api.delete("/api/security/pin")
-                                    repo.store.setPin("")
-                                    refresh()
-                                    notice = "PIN 已清除"
-                                } catch (e: Exception) {
-                                    error = e.message
-                                }
-                            }
-                        })
+                        DangerTextButton("清除 PIN", { confirmClear = true })
                     }
                 }
             }
@@ -197,6 +188,29 @@ fun SecurityScreen(nav: NavHostController) {
             }
 
             Spacer(Modifier.height(24.dp))
+        }
+
+        if (confirmClear) {
+            ConfirmDialog(
+                title = "清除访问 PIN",
+                message = "清除后敏感操作不再需要二次确认，任何已配对的设备都能直接改配置。",
+                confirmLabel = "清除",
+                danger = true,
+                onConfirm = {
+                    scope.launch {
+                        error = null; notice = null
+                        try {
+                            repo.api.delete("/api/security/pin")
+                            repo.store.setPin("")
+                            refresh()
+                            notice = "PIN 已清除"
+                        } catch (e: Exception) {
+                            error = e.message
+                        }
+                    }
+                },
+                onDismiss = { confirmClear = false },
+            )
         }
     }
 }

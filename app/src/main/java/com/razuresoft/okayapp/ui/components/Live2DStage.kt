@@ -6,6 +6,7 @@ import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,13 @@ import com.razuresoft.okayapp.data.str
 fun Live2DStage(repo: AppRepo, modifier: Modifier = Modifier) {
     var modelUrl by remember { mutableStateOf<String?>(null) }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    // baseUrl 是普通 @Volatile 字段、不是 Compose state：直接读它的话换服务器
+    // 不会触发重组，WebView 也就不会重新加载。改成观察 DataStore 流。
+    val config by repo.store.flow.collectAsState(initial = repo.api.config)
+    val baseUrl = config.baseUrl.trimEnd('/')
+
+    fun absolute(path: String): String =
+        if (path.startsWith("http")) path else baseUrl + "/" + path.trimStart('/')
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -37,13 +45,13 @@ fun Live2DStage(repo: AppRepo, modifier: Modifier = Modifier) {
         }
     }
 
-    // drive speak / motion / expression from the chat bus
+    // 以事件号为 key（不是值）：同一句话/同一个动作第二次也要重新下发。
     val bus = repo.chat.live2d
-    LaunchedEffect(webView, bus.speakText.value) {
+    LaunchedEffect(webView, bus.speakEvent) {
         val t = bus.speakText.value ?: return@LaunchedEffect
         webView?.evaluateJavascript("window.__0KAY_LIVE2D__ && window.__0KAY_LIVE2D__.speak(${JSONObject.quote(t)})", null)
     }
-    LaunchedEffect(webView, bus.motion.value) {
+    LaunchedEffect(webView, bus.motionEvent) {
         val m = bus.motion.value ?: return@LaunchedEffect
         val parts = m.split(":")
         val js = if (parts.size >= 2 && parts[0].isNotEmpty())
@@ -51,7 +59,7 @@ fun Live2DStage(repo: AppRepo, modifier: Modifier = Modifier) {
         else "window.__0KAY_LIVE2D__ && window.__0KAY_LIVE2D__.motion(null, ${JSONObject.quote(parts.last())})"
         webView?.evaluateJavascript(js, null)
     }
-    LaunchedEffect(webView, bus.expression.value) {
+    LaunchedEffect(webView, bus.expressionEvent) {
         val e = bus.expression.value ?: return@LaunchedEffect
         webView?.evaluateJavascript("window.__0KAY_LIVE2D__ && window.__0KAY_LIVE2D__.expression($e)", null)
     }
@@ -72,8 +80,8 @@ fun Live2DStage(repo: AppRepo, modifier: Modifier = Modifier) {
             }
         },
         update = { wv ->
-            val html = "file:///android_asset/live2d/live2d.html?base=${java.net.URLEncoder.encode(repo.api.config.baseUrl, "UTF-8")}" +
-                "&model=${java.net.URLEncoder.encode(repo.api.absoluteUrl(modelUrl.orEmpty()), "UTF-8")}"
+            val html = "file:///android_asset/live2d/live2d.html?base=${java.net.URLEncoder.encode(baseUrl, "UTF-8")}" +
+                "&model=${java.net.URLEncoder.encode(absolute(modelUrl.orEmpty()), "UTF-8")}"
             if (wv.url != html) wv.loadUrl(html)
         },
     )

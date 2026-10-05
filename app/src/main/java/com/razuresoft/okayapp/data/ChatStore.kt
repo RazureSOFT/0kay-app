@@ -1,8 +1,10 @@
 package com.razuresoft.okayapp.data
 
 import android.content.Context
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,11 +34,41 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis(),
 )
 
-/** Live2D driving channels shared between the chat screen and the stage. */
+/**
+ * Live2D driving channels shared between the chat screen and the stage.
+ *
+ * 每个通道除值本身还带一个单调递增的事件号：只观察「值」的话，第二次说同一
+ * 句话 / 播同一个动作时值没有变化，LaunchedEffect 不会重跑，WebView 也就收不到
+ * 指令。舞台以事件号为 key，值只作为参数读取。
+ */
 class Live2DBus {
     val speakText = mutableStateOf<String?>(null)
     val motion = mutableStateOf<String?>(null)   // "group:index" or ":index"
     val expression = mutableStateOf<Int?>(null)
+
+    var speakEvent by mutableStateOf(0)
+        private set
+    var motionEvent by mutableStateOf(0)
+        private set
+    var expressionEvent by mutableStateOf(0)
+        private set
+
+    fun speak(text: String) {
+        if (text.isBlank()) return
+        speakText.value = text
+        speakEvent++
+    }
+
+    fun playMotion(spec: String) {
+        if (spec.isBlank()) return
+        motion.value = spec
+        motionEvent++
+    }
+
+    fun showExpression(index: Int) {
+        expression.value = index
+        expressionEvent++
+    }
 }
 
 /**
@@ -61,6 +93,17 @@ class ChatStore(context: Context, val api: OkayApi) {
     val voiceEnabled = mutableStateOf(false)
     /** 回复完成后等待播放 TTS 的文本 */
     val speakPending = mutableStateOf<String?>(null)
+    /**
+     * 语音排队事件号。播放协程必须以它为 key：若以 speakPending 的值当 key，
+     * 协程体消费时把值置空就会取消自己，音频永远播不出来。
+     */
+    var speakEvent by mutableStateOf(0)
+        private set
+
+    private fun queueSpeak(text: String) {
+        speakPending.value = text
+        speakEvent++
+    }
     var currentTaskId: String? = null
         private set
 
@@ -145,7 +188,7 @@ class ChatStore(context: Context, val api: OkayApi) {
                     }
                     if (event == "done" || jo?.bool("done") == true) {
                         if (acc.isNotEmpty()) pushChunk()
-                        if (voiceEnabled.value && acc.isNotBlank()) speakPending.value = acc
+                        if (voiceEnabled.value && acc.isNotBlank()) queueSpeak(acc)
                         isTyping.value = false
                         return@launch
                     }
@@ -185,15 +228,15 @@ class ChatStore(context: Context, val api: OkayApi) {
     fun dispatchMarkers(raw: String) {
         MOTION_RE.findAll(raw).forEach { m ->
             val parts = m.groupValues[1].split(":")
-            live2d.motion.value = if (parts.size >= 2) "${parts[0]}:${parts[1]}" else ":${parts[0]}"
+            live2d.playMotion(if (parts.size >= 2) "${parts[0]}:${parts[1]}" else ":${parts[0]}")
         }
         EXPR_RE.findAll(raw).forEach { m ->
-            live2d.expression.value = m.groupValues[1].toIntOrNull() ?: 0
+            live2d.showExpression(m.groupValues[1].toIntOrNull() ?: 0)
         }
     }
 
     fun speak(text: String) {
-        if (voiceEnabled.value && text.isNotBlank()) live2d.speakText.value = text
+        if (voiceEnabled.value && text.isNotBlank()) live2d.speak(text)
     }
 
     /** 语音合成：返回音频字节（POST /api/tts）。 */

@@ -33,6 +33,7 @@ import com.razuresoft.okayapp.data.jsStr
 import com.razuresoft.okayapp.data.obj
 import com.razuresoft.okayapp.data.str
 import com.razuresoft.okayapp.ui.LocalRepo
+import com.razuresoft.okayapp.ui.components.ConfirmDialog
 import com.razuresoft.okayapp.ui.components.DangerTextButton
 import com.razuresoft.okayapp.ui.components.ErrorBox
 import com.razuresoft.okayapp.ui.components.RowItem
@@ -54,6 +55,7 @@ fun CompanionScreen(nav: NavHostController) {
     var modelUrl by remember { mutableStateOf("") }
     var models by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf<JsonObject?>(null) }
 
     fun refresh() {
         scope.launch {
@@ -124,14 +126,7 @@ fun CompanionScreen(nav: NavHostController) {
                 value = if (url == modelUrl) "当前" else null,
                 onClick = { modelUrl = url; save() },
                 trailing = {
-                    DangerTextButton("删除", {
-                        scope.launch {
-                            runCatching {
-                                repo.api.delete("/api/live2d/${m.str("id")}")
-                                models = repo.api.get("/api/live2d").asObject().arr("models").map { it.asObject() }
-                            }
-                        }
-                    })
+                    DangerTextButton("删除", { confirmDelete = m })
                 },
             )
         }
@@ -145,6 +140,25 @@ fun CompanionScreen(nav: NavHostController) {
             )
         }
         Spacer(Modifier.height(12.dp))
+    }
+
+    confirmDelete?.let { m ->
+        ConfirmDialog(
+            title = "删除模型",
+            message = "确定删除「${m.str("label").ifEmpty { m.str("id") }}」？模型文件会一并移除。",
+            confirmLabel = "删除",
+            danger = true,
+            onConfirm = {
+                val id = m.str("id")
+                scope.launch {
+                    error = runCatching {
+                        repo.api.delete("/api/live2d/$id")
+                        models = repo.api.get("/api/live2d").asObject().arr("models").map { it.asObject() }
+                    }.exceptionOrNull()?.message
+                }
+            },
+            onDismiss = { confirmDelete = null },
+        )
     }
 }
 
