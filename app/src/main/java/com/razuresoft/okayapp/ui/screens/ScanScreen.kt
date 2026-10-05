@@ -33,7 +33,6 @@ import com.razuresoft.okayapp.data.parsePairing
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.Routes
 import com.razuresoft.okayapp.ui.components.ErrorBox
-import com.razuresoft.okayapp.ui.components.Loading
 import com.razuresoft.okayapp.ui.components.PrimaryButton
 import com.razuresoft.okayapp.ui.components.ScreenScaffold
 import com.razuresoft.okayapp.ui.components.TonalButton
@@ -123,7 +122,16 @@ fun ScanScreen(nav: NavHostController) {
     ScreenScaffold(title = "扫码连接", subtitle = "对准电脑 WebUI 的「连接」二维码", onBack = { nav.popBackStack() }) { padding ->
         Column(Modifier.padding(padding).padding(20.dp)) {
             if (cameraGranted) {
-                Loading(status.ifEmpty { "正在打开相机…" })
+                Text("相机已就绪", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    status.ifEmpty { "对准电脑 WebUI 的「连接」二维码…" },
+                    color = TextDim,
+                )
+                Spacer(Modifier.height(12.dp))
+                // 扫码被取消后 openScanner 会被置回 false；没有这个按钮用户
+                // 只能退出重进才能再次唤起相机。
+                PrimaryButton("重新扫描", { openScanner = true })
             } else {
                 Text("需要相机权限", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(6.dp))

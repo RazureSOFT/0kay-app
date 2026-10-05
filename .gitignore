@@ -8,3 +8,6 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Tool-internal agent memory, not project content.
+.workbuddy-ai/

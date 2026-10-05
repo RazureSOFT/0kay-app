@@ -74,12 +74,14 @@ import com.razuresoft.okayapp.ui.screens.ProviderEditScreen
 import com.razuresoft.okayapp.ui.screens.ProvidersScreen
 import com.razuresoft.okayapp.ui.screens.ScanScreen
 import com.razuresoft.okayapp.ui.screens.SectionScreen
+import com.razuresoft.okayapp.ui.screens.SecurityScreen
 import com.razuresoft.okayapp.ui.screens.SessionsScreen
 import com.razuresoft.okayapp.ui.screens.SessionScreen
 import com.razuresoft.okayapp.ui.screens.SettingsScreen
 import com.razuresoft.okayapp.ui.screens.SkillsScreen
 import com.razuresoft.okayapp.ui.screens.StatusScreen
 import com.razuresoft.okayapp.ui.screens.TasksScreen
+import com.razuresoft.okayapp.ui.screens.UpdatesScreen
 import com.razuresoft.okayapp.ui.screens.UsageScreen
 import com.razuresoft.okayapp.ui.theme.Bg
 import dev.chrisbanes.haze.HazeState
@@ -111,6 +113,8 @@ object Routes {
     const val Companion = "companion"
     const val Inbox = "inbox"
     const val Notifications = "notifications"
+    const val Updates = "updates"
+    const val Security = "security"
     const val About = "about"
 }
 
@@ -174,6 +178,8 @@ fun AppRoot() {
                 composable(Routes.Companion) { CompanionScreen(nav) }
                 composable(Routes.Inbox) { InboxScreen(nav) }
                 composable(Routes.Notifications) { NotificationsScreen(nav) }
+                composable(Routes.Updates) { UpdatesScreen(nav) }
+                composable(Routes.Security) { SecurityScreen(nav) }
                 composable(Routes.About) { AboutScreen(nav) }
             }
 

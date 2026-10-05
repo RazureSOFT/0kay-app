@@ -20,17 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.razuresoft.okayapp.ui.LocalRepo
+import com.razuresoft.okayapp.ui.Routes
 import com.razuresoft.okayapp.ui.components.AppTextField
 import com.razuresoft.okayapp.ui.components.Badge
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.unit.dp
 import com.razuresoft.okayapp.ui.components.CardBox
 import com.razuresoft.okayapp.ui.components.EmptyBox
 import com.razuresoft.okayapp.ui.components.ErrorBox
@@ -182,6 +175,7 @@ fun AboutScreen(nav: NavHostController) {
             RowItem("版本", "0.2.0（原生 Compose）")
             RowItem("服务器", repo.api.config.baseUrl)
             RowItem("健康检查", health ?: "检测中…")
+            RowItem("更新", subtitle = "平台与组件版本", onClick = { nav.navigate(Routes.Updates) })
         }
         SectionTitle("连接")
         Column {

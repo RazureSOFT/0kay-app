@@ -1,5 +1,6 @@
 package com.razuresoft.okayapp.ui.screens
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,21 +50,22 @@ fun SessionsScreen(nav: NavHostController) {
     }
 
     ScreenScaffold(title = "Agent 会话", onBack = { nav.popBackStack() }) { padding ->
-        ErrorBox(error)
-        if (!loaded && error == null) {
-            Loading()
-            return@ScreenScaffold
-        }
-        if (loaded && sessions.isEmpty() && error == null) {
-            EmptyBox("暂无会话")
-        }
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-            items(sessions, key = { it.str("task_id").ifEmpty { it.hashCode().toString() } }) { s ->
-                RowItem(
-                    title = s.str("prompt").ifEmpty { s.str("task_id").take(18) },
-                    subtitle = s.str("started_at"),
-                    onClick = { nav.navigate("${Routes.Session}/${s.str("task_id")}") },
-                )
+        // Scaffold 的内容槽是堆叠布局：必须包一层 Column，否则错误条/加载态
+        // 会和列表叠在一起。
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            ErrorBox(error)
+            when {
+                !loaded && error == null -> Loading()
+                sessions.isEmpty() && error == null -> EmptyBox("暂无会话")
+                else -> LazyColumn(Modifier.fillMaxSize()) {
+                    items(sessions, key = { it.str("task_id").ifEmpty { it.hashCode().toString() } }) { s ->
+                        RowItem(
+                            title = s.str("prompt").ifEmpty { s.str("task_id").take(18) },
+                            subtitle = s.str("started_at"),
+                            onClick = { nav.navigate("${Routes.Session}/${s.str("task_id")}") },
+                        )
+                    }
+                }
             }
         }
     }

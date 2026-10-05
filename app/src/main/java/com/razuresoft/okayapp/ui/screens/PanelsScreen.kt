@@ -53,7 +53,7 @@ import com.razuresoft.okayapp.data.jsonOf
 import com.razuresoft.okayapp.data.obj
 import com.razuresoft.okayapp.data.str
 
-/** 仪表盘：状态卡 + 入口（用量/记忆/技能/权限/收件箱/通知/关于）。 */
+/** 插件：运行时插件开关 + 已安装包卸载（对应 WebUI 的 PluginsPage）。 */
 @Composable
 fun PluginsScreen(nav: NavHostController) {
     val repo = LocalRepo.current

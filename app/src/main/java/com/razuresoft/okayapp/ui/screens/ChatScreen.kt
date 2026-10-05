@@ -116,6 +116,8 @@ fun ChatScreen(nav: NavHostController) {
                 notes.forEach { (id, text, _) ->
                     if (chat.messages.none { it.id == "notification_$id" }) {
                         chat.messages.add(ChatMessage("notification_$id", "assistant", text))
+                        // 主动消息同样可能带 [[motion:..]] / [[expression:..]] 标记。
+                        chat.dispatchMarkers(text)
                     }
                 }
                 chat.acknowledgeNotifications(notes.map { it.first })
@@ -152,8 +154,17 @@ fun ChatScreen(nav: NavHostController) {
         }
     }
 
-    LaunchedEffect(chat.messages.size, chat.isTyping.value) {
-        if (chat.messages.isNotEmpty()) listState.animateScrollToItem(chat.messages.size)
+    // 自动滚到底：流式回复期间列表结构不变（回复行只被 copy 替换），
+    // 所以必须把最后一条消息的内容长度也作为 key，否则逐字增长时不会跟随。
+    val lastLen = chat.messages.lastOrNull()?.content?.length ?: 0
+    LaunchedEffect(chat.messages.size, chat.isTyping.value, lastLen) {
+        val count = chat.messages.size
+        if (count == 0) return@LaunchedEffect
+        // LazyColumn 条目 = 消息数（流式中再加一条 typing 行）；索引必须落在
+        // [0, itemCount-1]，越界会抛出滚动异常。
+        val target = (if (chat.isTyping.value) count else count - 1).coerceAtLeast(0)
+        // 流式期间逐 token 触发，用瞬时滚动避免每次都起一段动画造成卡顿。
+        if (chat.isTyping.value) listState.scrollToItem(target) else listState.animateScrollToItem(target)
     }
 
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -210,7 +221,19 @@ fun ChatScreen(nav: NavHostController) {
                 }
 
                 chat.error.value?.let {
-                    Text(it, color = Danger, modifier = Modifier.padding(horizontal = 14.dp))
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(it, color = Danger, modifier = Modifier.weight(1f))
+                        Text(
+                            "✕",
+                            color = TextFaint,
+                            modifier = Modifier
+                                .clickable { chat.error.value = null }
+                                .padding(horizontal = 8.dp),
+                        )
+                    }
                 }
 
                 LazyColumn(
