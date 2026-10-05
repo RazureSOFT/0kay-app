@@ -35,6 +35,9 @@ fun SettingsScreen(nav: NavHostController) {
         runCatching {
             sections = repo.api.get("/api/settings/sections", listOf("values" to "1"))
                 .asObject().arr("sections").map { it.asObject() }
+                // mcp has a dedicated editor (McpScreen) with JSON validation —
+                // listing it here too would give two ways to edit one value.
+                .filter { it.str("id") != "mcp" }
         }.onFailure { error = it.message }
         loaded = true
     }

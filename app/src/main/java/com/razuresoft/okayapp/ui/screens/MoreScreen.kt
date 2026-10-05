@@ -73,6 +73,7 @@ fun MoreScreen(nav: NavHostController) {
             RowItem("插件", onClick = { nav.navigate(Routes.Plugins) })
             RowItem("更新", subtitle = "平台与组件版本", onClick = { nav.navigate(Routes.Updates) })
             RowItem("安全", subtitle = "访问 PIN 与登录门禁", onClick = { nav.navigate(Routes.Security) })
+            RowItem("MCP", subtitle = "外部 MCP 服务", onClick = { nav.navigate(Routes.Mcp) })
             RowItem("关于", onClick = { nav.navigate(Routes.About) })
         }
 

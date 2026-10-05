@@ -66,6 +66,7 @@ import com.razuresoft.okayapp.ui.screens.ChatScreen
 import com.razuresoft.okayapp.ui.screens.CompanionScreen
 import com.razuresoft.okayapp.ui.screens.InboxScreen
 import com.razuresoft.okayapp.ui.screens.LoginScreen
+import com.razuresoft.okayapp.ui.screens.McpScreen
 import com.razuresoft.okayapp.ui.screens.MemoryScreen
 import com.razuresoft.okayapp.ui.screens.MoreScreen
 import com.razuresoft.okayapp.ui.screens.NotificationsScreen
@@ -116,6 +117,7 @@ object Routes {
     const val Notifications = "notifications"
     const val Updates = "updates"
     const val Security = "security"
+    const val Mcp = "mcp"
     const val About = "about"
 }
 
@@ -181,6 +183,7 @@ fun AppRoot() {
                 composable(Routes.Notifications) { NotificationsScreen(nav) }
                 composable(Routes.Updates) { UpdatesScreen(nav) }
                 composable(Routes.Security) { SecurityScreen(nav) }
+                composable(Routes.Mcp) { McpScreen(nav) }
                 composable(Routes.About) { AboutScreen(nav) }
             }
 
